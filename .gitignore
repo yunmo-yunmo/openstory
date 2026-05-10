@@ -57,3 +57,4 @@ yarn-error.log*
 # editor files
 .idea
 .vscode
+.gstack/
