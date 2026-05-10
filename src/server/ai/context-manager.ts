@@ -1,6 +1,9 @@
 import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import type { ModelMessage } from "ai";
+import { buildOutlineTreeLabel } from "../api/routers/outline-helpers";
+import { worldNoteToPlainTextSummary } from "../api/routers/world-note-helpers";
+import { tiptapToPlainText } from "../services/tiptap-converter";
 
 async function buildL0Context(
 	db: PrismaClient,
@@ -12,13 +15,18 @@ async function buildL0Context(
 		content: string;
 	},
 ): Promise<string> {
-	const [outlines, characters] = await Promise.all([
+	const [outlines, characters, worldNotes] = await Promise.all([
 		db.outline.findMany({
 			where: { projectId },
 			orderBy: { order: "asc" },
 		}),
 		db.character.findMany({ where: { projectId } }),
+		db.worldNote.findMany({
+			where: { projectId },
+			orderBy: [{ order: "asc" }, { title: "asc" }],
+		}),
 	]);
+	const currentChapterPlainText = tiptapToPlainText(currentChapter.content);
 
 	return [
 		"## Current Chapter",
@@ -27,15 +35,12 @@ async function buildL0Context(
 		`Word Count: ${currentChapter.wordCount}`,
 		"",
 		"### Content",
-		currentChapter.content,
+		currentChapterPlainText,
 		"",
 		"### Full Outline",
 		outlines.length > 0
 			? outlines
-					.map(
-						(o) =>
-							`- [${o.status}] ${o.title}${o.description ? `: ${o.description}` : ""}${o.chapterId ? ` (chapter: ${o.chapterId})` : ""}`,
-					)
+					.map((outline) => `- ${buildOutlineTreeLabel(outline)}`)
 					.join("\n")
 			: "(No outline yet)",
 		"",
@@ -48,6 +53,11 @@ async function buildL0Context(
 					)
 					.join("\n")
 			: "(No characters defined)",
+		"",
+		"### World Notes",
+		worldNotes.length > 0
+			? worldNotes.map((note) => worldNoteToPlainTextSummary(note)).join("\n")
+			: "(No world notes defined)",
 	].join("\n");
 }
 

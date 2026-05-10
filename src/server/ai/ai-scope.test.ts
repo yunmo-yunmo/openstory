@@ -33,6 +33,7 @@ test("assembleContext scopes the current chapter lookup to the project", async (
 		},
 		outline: { findMany: async () => [] },
 		character: { findMany: async () => [] },
+		worldNote: { findMany: async () => [] },
 	};
 
 	await assert.rejects(
@@ -43,6 +44,52 @@ test("assembleContext scopes the current chapter lookup to the project", async (
 		}),
 		/Chapter not found/,
 	);
+});
+
+test("assembleContext includes scoped world notes and converts TipTap chapter content to plain text", async () => {
+	const db = {
+		chapter: {
+			findUnique: async () => ({
+				id: "chapter-1",
+				projectId: "project-current",
+				title: "Current Chapter",
+				status: "draft",
+				wordCount: 4,
+				content: tiptapDoc("The clean moon text."),
+				order: 3,
+			}),
+			findMany: async () => [],
+		},
+		outline: { findMany: async () => [] },
+		character: { findMany: async () => [] },
+		worldNote: {
+			findMany: async ({ where }: { where: { projectId: string } }) => {
+				assert.equal(where.projectId, "project-current");
+				return [
+					{
+						category: "magic",
+						title: "Moon Law",
+						content: tiptapDoc("Moon doors only open at low tide."),
+					},
+				];
+			},
+		},
+	};
+
+	const messages = await assembleContext({
+		db: db as never,
+		projectId: "project-current",
+		currentChapterId: "chapter-1",
+		includeL1: false,
+	});
+
+	const content = String(messages[0]?.content);
+	assert.match(content, /The clean moon text\./);
+	assert.match(
+		content,
+		/- \[magic\] Moon Law: Moon doors only open at low tide\./,
+	);
+	assert.doesNotMatch(content, /"type":"doc"/);
 });
 
 test("upsertOutline updates only outlines in the current project", async () => {

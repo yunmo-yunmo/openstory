@@ -21,6 +21,8 @@ All routers currently use `protectedProcedure`. Requests require a valid session
 | `project` | `create`, `list`, `getById`, `update`, `delete` |
 | `chapter` | `listByProject`, `getById`, `create`, `save`, `updateOrder`, `importChapters`, `exportChapters`, `delete` |
 | `character` | `listByProject`, `getById`, `create`, `update`, `delete` |
+| `outline` | `listByProject`, `create`, `update`, `updateOrder`, `delete` |
+| `worldNote` | `listByProject`, `create`, `update`, `delete` |
 | `search` | `searchAll` |
 | `session` | `create`, `list`, `getById`, `send`, `delete` |
 | `llmConfig` | `list`, `create`, `update`, `delete`, `setActive`, `status`, `fetchModels`, `testConnection` |
@@ -278,14 +280,14 @@ Input:
 {
   id: string;
   name?: string;
-  description?: string;
-  traits?: string;
-  relationships?: string;
-  notes?: string;
+  description?: string | null;
+  traits?: string | null;
+  relationships?: string | null;
+  notes?: string | null;
 }
 ```
 
-Updates a character owned by the current user.
+Updates a character owned by the current user. Passing `null` explicitly clears optional fields.
 
 ### `character.delete`
 
@@ -298,6 +300,155 @@ Input:
 ```
 
 Deletes a character owned by the current user.
+
+## Outline
+
+### `outline.listByProject`
+
+Query.
+
+Input:
+
+```typescript
+{ projectId: string }
+```
+
+Returns outline nodes for a project owned by the current user, ordered by `order asc` then `title asc`.
+
+### `outline.create`
+
+Mutation.
+
+Input:
+
+```typescript
+{
+  projectId: string;
+  title: string;
+  description?: string | null;
+  order: number;
+  parentId?: string | null;
+  chapterId?: string | null;
+  status?: "planned" | "writing" | "done";
+}
+```
+
+Creates an outline node in a project owned by the current user. `parentId` and `chapterId` must belong to the same project.
+
+### `outline.update`
+
+Mutation.
+
+Input:
+
+```typescript
+{
+  id: string;
+  title?: string;
+  description?: string | null;
+  order?: number;
+  parentId?: string | null;
+  chapterId?: string | null;
+  status?: "planned" | "writing" | "done";
+}
+```
+
+Updates an outline node owned by the current user. Writes are scoped by `projectId`, parent changes reject self-parenting and cycles, and `chapterId` must belong to the same project.
+
+### `outline.updateOrder`
+
+Mutation.
+
+Input:
+
+```typescript
+{
+  projectId: string;
+  outlines: Array<{
+    id: string;
+    order: number;
+    parentId?: string | null;
+  }>;
+}
+```
+
+Reorders outline nodes in a project owned by the current user and optionally updates parent links after validating project membership and cycles.
+
+### `outline.delete`
+
+Mutation.
+
+Input:
+
+```typescript
+{ id: string }
+```
+
+Deletes an outline node owned by the current user.
+
+## World Note
+
+### `worldNote.listByProject`
+
+Query.
+
+Input:
+
+```typescript
+{ projectId: string }
+```
+
+Returns world notes for a project owned by the current user, ordered by `order asc` then `title asc`.
+
+### `worldNote.create`
+
+Mutation.
+
+Input:
+
+```typescript
+{
+  projectId: string;
+  title: string;
+  content?: string;
+  category?: "general" | "location" | "history" | "magic" | "culture" | "other";
+  tags?: string[];
+  order?: number;
+}
+```
+
+Creates a world note in a project owned by the current user. Plain text `content` is stored as TipTap JSON. Tags are trimmed, deduplicated, and stored as a JSON array string.
+
+### `worldNote.update`
+
+Mutation.
+
+Input:
+
+```typescript
+{
+  id: string;
+  title?: string;
+  content?: string;
+  category?: "general" | "location" | "history" | "magic" | "culture" | "other";
+  tags?: string[] | null;
+  order?: number;
+}
+```
+
+Updates a world note owned by the current user using a project-scoped mutation path. Plain text `content` is stored as TipTap JSON; `tags: null` clears tags.
+
+### `worldNote.delete`
+
+Mutation.
+
+Input:
+
+```typescript
+{ id: string }
+```
+
+Deletes a world note owned by the current user.
 
 ## Search
 

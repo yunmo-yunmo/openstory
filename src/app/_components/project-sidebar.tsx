@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { ImportChaptersDialog } from "./import-chapters-dialog";
+import type { WorkspaceMode } from "./story-bible-types";
+import { workspaceModes } from "./story-bible-types";
 
 function statusDot(status: string) {
 	switch (status) {
@@ -24,12 +26,16 @@ export function ProjectSidebar({
 	onSelectChapter,
 	activeSessionId,
 	onSelectSession,
+	workspaceMode,
+	onWorkspaceModeChange,
 }: {
 	projectId: string;
 	selectedChapterId: string | null;
 	onSelectChapter: (id: string) => void;
 	activeSessionId: string | null;
 	onSelectSession: (id: string) => void;
+	workspaceMode: WorkspaceMode;
+	onWorkspaceModeChange: (mode: WorkspaceMode) => void;
 }) {
 	const router = useRouter();
 	const [showCreateChapter, setShowCreateChapter] = useState(false);
@@ -111,6 +117,22 @@ export function ProjectSidebar({
 							{project.genre}
 						</span>
 					)}
+					<div className="mt-4 grid grid-cols-2 gap-1">
+						{workspaceModes.map((mode) => (
+							<button
+								className={`rounded-sm border px-2 py-1.5 font-sans text-xs transition-colors ${
+									workspaceMode === mode.id
+										? "border-amber/60 bg-amber/15 text-amber"
+										: "border-study-600 bg-study-700/60 text-ink-dim hover:border-study-500 hover:text-ink-muted"
+								}`}
+								key={mode.id}
+								onClick={() => onWorkspaceModeChange(mode.id)}
+								type="button"
+							>
+								{mode.label}
+							</button>
+						))}
+					</div>
 				</div>
 
 				{/* Chapters section */}
@@ -240,7 +262,10 @@ export function ProjectSidebar({
 											: "border-transparent border-l-2 hover:bg-study-700/50"
 									}`}
 									key={chapter.id}
-									onClick={() => onSelectChapter(chapter.id)}
+									onClick={() => {
+										onSelectChapter(chapter.id);
+										onWorkspaceModeChange("chapters");
+									}}
 									type="button"
 								>
 									<span className="mt-0.5 font-mono text-ink-dim text-xs">

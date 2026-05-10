@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { ChapterEditorArea } from "./chapter-editor-area";
+import { CharactersPanel } from "./characters-panel";
 import { ChatPanel } from "./chat-panel";
 import { ModelServiceDialog } from "./model-service-dialog";
+import { OutlinePanel } from "./outline-panel";
 import { ProjectSidebar } from "./project-sidebar";
+import type { WorkspaceMode } from "./story-bible-types";
+import { WorldNotesPanel } from "./world-notes-panel";
 
 export function WorkspaceShell({ projectId }: { projectId: string }) {
 	const [selectedChapterId, setSelectedChapterId] = useState<string | null>(
@@ -12,6 +16,18 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 	);
 	const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 	const [showModelServices, setShowModelServices] = useState(false);
+	const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("chapters");
+
+	const centerPanel =
+		workspaceMode === "characters" ? (
+			<CharactersPanel projectId={projectId} />
+		) : workspaceMode === "outline" ? (
+			<OutlinePanel projectId={projectId} />
+		) : workspaceMode === "worldNotes" ? (
+			<WorldNotesPanel projectId={projectId} />
+		) : (
+			<ChapterEditorArea chapterId={selectedChapterId} projectId={projectId} />
+		);
 
 	return (
 		<div className="flex h-screen bg-study-900">
@@ -19,10 +35,12 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 				activeSessionId={activeSessionId}
 				onSelectChapter={setSelectedChapterId}
 				onSelectSession={setActiveSessionId}
+				onWorkspaceModeChange={setWorkspaceMode}
 				projectId={projectId}
 				selectedChapterId={selectedChapterId}
+				workspaceMode={workspaceMode}
 			/>
-			<ChapterEditorArea chapterId={selectedChapterId} projectId={projectId} />
+			{centerPanel}
 			<ChatPanel
 				activeSessionId={activeSessionId}
 				chapterId={selectedChapterId}

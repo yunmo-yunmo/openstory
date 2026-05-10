@@ -1,6 +1,6 @@
 # OpenStory
 
-OpenStory is a Next.js writing workspace for long-form fiction. It combines project/chapter management, a dark "Writer's Study" editor UI, tRPC APIs, Prisma-backed persistence, and AI writing tools powered through the Vercel AI SDK.
+OpenStory is a Next.js writing workspace for long-form fiction. It combines project/chapter management, Story Bible workspaces for characters, outlines, and world notes, a dark "Writer's Study" editor UI, tRPC APIs, Prisma-backed persistence, and AI writing tools powered through the Vercel AI SDK.
 
 ## Stack
 
@@ -89,6 +89,10 @@ npm test -- src/server/services/encryption.test.ts # Single test file
 ## Current Runtime Notes
 
 `npm run typecheck` and `npm test` pass with the current source. For production builds without Discord OAuth, set `ENABLE_LOCAL_USER_MODE="true"` so Discord credentials are optional.
+
+## Story Bible
+
+Inside a project workspace, the left sidebar switches between chapter editing, characters, outline, and world notes. Character fields can be cleared explicitly, outline parent/chapter references are project-scoped, and world-note text is stored as TipTap JSON. AI chat context includes the current chapter as plain text plus outline, character, and world-note summaries.
 
 ## Project Layout
 

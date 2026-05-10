@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { buildCharacterUpdateData } from "./character-helpers";
 
 export const characterRouter = createTRPCRouter({
 	listByProject: protectedProcedure
@@ -52,17 +53,17 @@ export const characterRouter = createTRPCRouter({
 			z.object({
 				id: z.string(),
 				name: z.string().min(1).optional(),
-				description: z.string().optional(),
-				traits: z.string().optional(),
-				relationships: z.string().optional(),
-				notes: z.string().optional(),
+				description: z.string().nullable().optional(),
+				traits: z.string().nullable().optional(),
+				relationships: z.string().nullable().optional(),
+				notes: z.string().nullable().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...data } = input;
 			return ctx.db.character.update({
 				where: { id, project: { userId: ctx.session.user.id } },
-				data,
+				data: buildCharacterUpdateData(data),
 			});
 		}),
 

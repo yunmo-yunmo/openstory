@@ -6,6 +6,7 @@ import { outlineRouter } from "~/server/api/routers/outline";
 import { projectRouter } from "~/server/api/routers/project";
 import { searchRouter } from "~/server/api/routers/search";
 import { sessionRouter } from "~/server/api/routers/session";
+import { worldNoteRouter } from "~/server/api/routers/world-note";
 import {
 	createCallerFactory,
 	createTRPCRouter,
@@ -19,6 +20,7 @@ export const appRouter = createTRPCRouter({
 	outline: outlineRouter,
 	search: searchRouter,
 	session: sessionRouter,
+	worldNote: worldNoteRouter,
 	llmConfig: createLLMConfigRouter({
 		createTRPCRouter,
 		env,
