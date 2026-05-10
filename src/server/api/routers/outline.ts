@@ -12,7 +12,7 @@ const outlineStatusSchema = z.enum(["planned", "writing", "done"]);
 const outlineUpdateSchema = z.object({
 	title: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
-	order: z.number().int().optional(),
+	order: z.number().int().nonnegative().optional(),
 	parentId: z.string().nullable().optional(),
 	chapterId: z.string().nullable().optional(),
 	status: outlineStatusSchema.optional(),
@@ -51,7 +51,7 @@ export const outlineRouter = createTRPCRouter({
 					projectId: input.projectId,
 					project: { userId: ctx.session.user.id },
 				},
-				orderBy: { order: "asc" },
+				orderBy: [{ order: "asc" }, { title: "asc" }],
 			});
 		}),
 
@@ -61,7 +61,7 @@ export const outlineRouter = createTRPCRouter({
 				projectId: z.string(),
 				title: z.string().min(1),
 				description: z.string().nullable().optional(),
-				order: z.number().int(),
+				order: z.number().int().nonnegative(),
 				parentId: z.string().nullable().optional(),
 				chapterId: z.string().nullable().optional(),
 				status: outlineStatusSchema.default("planned"),
@@ -189,7 +189,7 @@ export const outlineRouter = createTRPCRouter({
 				outlines: z.array(
 					z.object({
 						id: z.string(),
-						order: z.number().int(),
+						order: z.number().int().nonnegative(),
 						parentId: z.string().nullable().optional(),
 					}),
 				),
