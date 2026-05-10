@@ -1,0 +1,59 @@
+{
+	"name": "openstory",
+	"version": "0.1.0",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"build": "next build",
+		"check": "biome check .",
+		"check:unsafe": "biome check --write --unsafe .",
+		"check:write": "biome check --write .",
+		"db:generate": "prisma migrate dev",
+		"db:migrate": "prisma migrate deploy",
+		"db:push": "prisma db push",
+		"db:studio": "prisma studio",
+		"dev": "next dev --turbo",
+		"postinstall": "prisma generate",
+		"preview": "next build && next start",
+		"start": "next start",
+		"test": "node --test --loader ./scripts/ts-test-loader.mjs --conditions react-server \"src/**/*.test.ts\"",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "^3.0.76",
+		"@ai-sdk/openai": "^3.0.63",
+		"@auth/prisma-adapter": "^2.7.2",
+		"@prisma/client": "^6.6.0",
+		"@t3-oss/env-nextjs": "^0.12.0",
+		"@tanstack/react-query": "^5.69.0",
+		"@tiptap/react": "^3.22.5",
+		"@tiptap/starter-kit": "^3.22.5",
+		"@trpc/client": "^11.0.0",
+		"@trpc/react-query": "^11.0.0",
+		"@trpc/server": "^11.0.0",
+		"ai": "^6.0.176",
+		"next": "^15.2.3",
+		"next-auth": "5.0.0-beta.25",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"server-only": "^0.0.1",
+		"superjson": "^2.2.1",
+		"zod": "^3.24.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.5",
+		"@tailwindcss/postcss": "^4.0.15",
+		"@types/node": "^20.14.10",
+		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.0.0",
+		"postcss": "^8.5.3",
+		"prisma": "^6.6.0",
+		"tailwindcss": "^4.0.15",
+		"typescript": "^5.8.2"
+	},
+	"ct3aMetadata": {
+		"initVersion": "7.40.0"
+	},
+	"packageManager": "npm@11.6.2"
+}
