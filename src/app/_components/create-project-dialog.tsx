@@ -20,9 +20,9 @@ export function CreateProjectDialog({ onClose }: CreateProjectDialogProps) {
 	const isSubmittable = name.trim().length > 0;
 
 	const createProject = api.project.create.useMutation({
-		onSuccess: async (project) => {
-			await utils.project.invalidate();
+		onSuccess: (project) => {
 			router.push(`/${project.id}`);
+			void utils.project.invalidate();
 		},
 	});
 
