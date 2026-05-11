@@ -44,6 +44,19 @@ function noteContentToText(content: string) {
 	}
 }
 
+function noteTagsToText(tags: string | null) {
+	if (!tags) return "";
+	try {
+		const parsed: unknown = JSON.parse(tags);
+		if (!Array.isArray(parsed)) return "";
+		return parsed
+			.filter((tag): tag is string => typeof tag === "string")
+			.join(", ");
+	} catch {
+		return "";
+	}
+}
+
 export function WorldNotesPanel({ projectId }: { projectId: string }) {
 	const [notes] = api.worldNote.listByProject.useSuspenseQuery({ projectId });
 	const utils = api.useUtils();
@@ -85,13 +98,12 @@ export function WorldNotesPanel({ projectId }: { projectId: string }) {
 	};
 
 	const startEdit = (note: (typeof notes)[number]) => {
-		const tags = note.tags ? JSON.parse(note.tags) : [];
 		setSelectedId(note.id);
 		setForm({
 			title: note.title,
 			content: noteContentToText(note.content),
 			category: note.category as WorldNoteForm["category"],
-			tags: Array.isArray(tags) ? tags.join(", ") : "",
+			tags: noteTagsToText(note.tags),
 			order: String(note.order),
 		});
 		setConfirmDeleteId(null);
