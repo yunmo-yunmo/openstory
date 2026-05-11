@@ -11,6 +11,10 @@ interface TipTapDoc {
 }
 
 function nodeToText(node: TipTapNode): string {
+	if (node.type === "hardBreak") {
+		return "\n";
+	}
+
 	if (node.text !== undefined) {
 		let text = node.text;
 		if (node.marks) {
@@ -22,9 +26,8 @@ function nodeToText(node: TipTapNode): string {
 		return text;
 	}
 	if (node.content) {
-		return node.content
-			.map((child) => nodeToText(child))
-			.join(node.type === "paragraph" ? "\n\n" : "");
+		const separator = node.type === "doc" ? "\n\n" : "";
+		return node.content.map((child) => nodeToText(child)).join(separator);
 	}
 	return "";
 }

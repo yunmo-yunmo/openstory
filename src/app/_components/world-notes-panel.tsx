@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { tiptapToPlainText } from "~/server/services/tiptap-converter";
 import { api } from "~/trpc/react";
 
 type WorldNoteForm = {
@@ -27,21 +28,7 @@ function parseTags(text: string) {
 }
 
 function noteContentToText(content: string) {
-	try {
-		const doc = JSON.parse(content) as {
-			content?: Array<{ content?: Array<{ text?: string }> }>;
-		};
-		return (
-			doc.content
-				?.map(
-					(node) =>
-						node.content?.map((child) => child.text ?? "").join("") ?? "",
-				)
-				.join("\n\n") ?? content
-		);
-	} catch {
-		return content;
-	}
+	return tiptapToPlainText(content);
 }
 
 function noteTagsToText(tags: string | null) {
