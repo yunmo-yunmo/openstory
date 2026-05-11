@@ -3,8 +3,8 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
 	buildOutlineUpdateData,
-	wouldCreateOutlineCycle,
 	type OutlineStatus,
+	wouldCreateOutlineCycle,
 } from "./outline-helpers";
 
 const outlineStatusSchema = z.enum(["planned", "writing", "done"]);
@@ -202,7 +202,9 @@ export const outlineRouter = createTRPCRouter({
 				where: { projectId: input.projectId },
 				select: { id: true, parentId: true },
 			});
-			const existingIds = new Set(existingOutlines.map((outline) => outline.id));
+			const existingIds = new Set(
+				existingOutlines.map((outline) => outline.id),
+			);
 
 			for (const outline of input.outlines) {
 				if (!existingIds.has(outline.id)) {

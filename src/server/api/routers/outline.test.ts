@@ -48,7 +48,10 @@ describe("outline helpers", () => {
 		assert.equal(wouldCreateOutlineCycle(outlines, "root", "root"), true);
 		assert.equal(wouldCreateOutlineCycle(outlines, "root", "child"), true);
 		assert.equal(wouldCreateOutlineCycle(outlines, "root", "grandchild"), true);
-		assert.equal(wouldCreateOutlineCycle(outlines, "grandchild", "root"), false);
+		assert.equal(
+			wouldCreateOutlineCycle(outlines, "grandchild", "root"),
+			false,
+		);
 		assert.equal(wouldCreateOutlineCycle(outlines, "child", null), false);
 	});
 });
