@@ -381,7 +381,10 @@ export async function acceptRevisionProposal(
 				newWordCount = countWords(tiptapToRawText(newContent));
 			} else {
 				const currentPlainText = tiptapToPlainText(proposal.chapter.content);
-				const plainResult = appendText(currentPlainText, proposal.replacementText);
+				const plainResult = appendText(
+					currentPlainText,
+					proposal.replacementText,
+				);
 				newContent = plainTextToTipTap(plainResult);
 				newWordCount = countWords(plainResult);
 			}
@@ -392,7 +395,11 @@ export async function acceptRevisionProposal(
 				proposal.originalText ?? "",
 			);
 			if (occurrences !== 1) {
-				return expireProposal(tx, proposal.id, "Replacement target is no longer unique.");
+				return expireProposal(
+					tx,
+					proposal.id,
+					"Replacement target is no longer unique.",
+				);
 			}
 
 			const tiptapResult = replaceParagraphsInTipTapDoc(

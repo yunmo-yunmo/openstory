@@ -252,13 +252,16 @@ describe("revision proposal service", () => {
 			content: [
 				{
 					type: "paragraph",
-					content: [
-						{ type: "text", text: "保持", marks: [{ type: "bold" }] },
-					],
+					content: [{ type: "text", text: "保持", marks: [{ type: "bold" }] }],
 				},
 				{
 					type: "paragraph",
-					content: [{ type: "text", text: "替换这段文字因为太长了需要足够的长度才能匹配成功。" }],
+					content: [
+						{
+							type: "text",
+							text: "替换这段文字因为太长了需要足够的长度才能匹配成功。",
+						},
+					],
 				},
 			],
 		});
