@@ -41,7 +41,7 @@ export const revisionProposalRouter = createTRPCRouter({
 
 			return ctx.db.chapterRevisionProposal.findMany({
 				where: { sessionId: input.sessionId },
-				orderBy: { createdAt: "desc" },
+				orderBy: { createdAt: "asc" },
 				select: {
 					id: true,
 					status: true,

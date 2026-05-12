@@ -280,11 +280,7 @@ export async function acceptRevisionProposal(
 				proposal.replacementText,
 			);
 			if (!replaced.ok) {
-				await tx.chapterRevisionProposal.update({
-					where: { id: proposal.id },
-					data: { status: "expired", decidedAt: new Date() },
-				});
-				return replaced;
+				return expireProposal(tx, proposal.id, replaced.message);
 			}
 			newPlainText = replaced.plainText;
 		} else {
@@ -330,7 +326,6 @@ export async function rejectRevisionProposal(
 				id: options.proposalId,
 				project: { userId: options.userId },
 			},
-			include: { chapter: true },
 		});
 
 		if (!proposal) {

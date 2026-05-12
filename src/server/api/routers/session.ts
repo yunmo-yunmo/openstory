@@ -96,14 +96,14 @@ export const sessionRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND" });
 			}
 
-			// Parse existing messages and append the user message (for LLM context)
+			// Parse existing messages (user message constructed separately per path)
 			let messages: { role: string; content: string }[];
 			try {
 				messages = JSON.parse(session.messages);
 			} catch {
 				messages = [];
 			}
-			messages.push({ role: "user", content: input.message });
+			const userMessage = { role: "user" as const, content: input.message };
 
 			// --- Revision proposal path ---
 			// Attempt structured proposal generation when the user message contains
@@ -154,6 +154,7 @@ Rules:
 					const revisionMessages: ModelMessage[] = [
 						{ role: "system", content: systemPrompt },
 						...(messages as ModelMessage[]),
+						userMessage,
 					];
 
 					try {
@@ -248,10 +249,12 @@ Rules:
 										} catch {
 											currentMessages = [];
 										}
-										currentMessages.push({
-											role: "user",
-											content: input.message,
-										});
+										currentMessages.push(
+											userMessage as {
+												role: string;
+												content: string;
+											},
+										);
 										currentMessages.push(
 											assistantMessage as {
 												role: string;
@@ -336,7 +339,7 @@ Rules:
 					llmClient,
 				});
 
-				const allMessages = [...contextMessages, ...messages] as ModelMessage[];
+				const allMessages = [...contextMessages, ...messages, userMessage] as ModelMessage[];
 
 				const result = await llmClient.generate({
 					task: "chat",
@@ -374,10 +377,9 @@ Rules:
 					} catch {
 						currentMessages = [];
 					}
-					currentMessages.push({
-						role: "user",
-						content: input.message,
-					});
+					currentMessages.push(
+						userMessage as { role: string; content: string },
+					);
 					currentMessages.push(
 						assistantMessage as { role: string; content: string },
 					);

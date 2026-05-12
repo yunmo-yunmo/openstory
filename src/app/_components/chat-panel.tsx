@@ -147,22 +147,25 @@ export function ChatPanel({
 	// State 3: Active session
 	return (
 		<ChatPanelInner
-			activeSessionId={activeSessionId}
-			onOpenModelServices={onOpenModelServices}
-			onSessionChange={onSessionChange}
-			projectId={projectId}
-		/>
+				activeSessionId={activeSessionId}
+				chapterId={chapterId}
+				onOpenModelServices={onOpenModelServices}
+				onSessionChange={onSessionChange}
+				projectId={projectId}
+			/>
 	);
 }
 
 function ChatPanelInner({
 	projectId,
 	activeSessionId,
+	chapterId,
 	onSessionChange,
 	onOpenModelServices,
 }: {
 	projectId: string;
 	activeSessionId: string;
+	chapterId: string | null;
 	onSessionChange: (id: string | null) => void;
 	onOpenModelServices?: () => void;
 }) {
@@ -204,22 +207,39 @@ function ChatPanelInner({
 		return map;
 	}, [proposalsData]);
 
+	// Per-proposal mutation tracking (tRPC mutations are global, not scoped)
+	const [mutatingProposalId, setMutatingProposalId] = useState<string | null>(null);
+	const [failedProposalId, setFailedProposalId] = useState<string | null>(null);
+
 	const acceptMutation = api.revisionProposal.accept.useMutation({
 		onSuccess: () => {
+			setMutatingProposalId(null);
+			setFailedProposalId(null);
 			void utils.revisionProposal.listBySession.invalidate({
 				sessionId: activeSessionId,
 			});
 			void utils.session.getById.invalidate({ id: activeSessionId });
 			void utils.chapter.listByProject.invalidate({ projectId });
+			if (chapterId) {
+				void utils.chapter.getById.invalidate({ id: chapterId });
+			}
+		},
+		onError: () => {
+			setMutatingProposalId(null);
 		},
 	});
 
 	const rejectMutation = api.revisionProposal.reject.useMutation({
 		onSuccess: () => {
+			setMutatingProposalId(null);
+			setFailedProposalId(null);
 			void utils.revisionProposal.listBySession.invalidate({
 				sessionId: activeSessionId,
 			});
 			void utils.session.getById.invalidate({ id: activeSessionId });
+		},
+		onError: () => {
+			setMutatingProposalId(null);
 		},
 	});
 
@@ -354,10 +374,19 @@ function ChatPanelInner({
 							<MessageBubble message={msg} />
 							{proposal && (
 								<RevisionProposalCard
-									isAccepting={acceptMutation.isPending}
-									isRejecting={rejectMutation.isPending}
-									onAccept={() => acceptMutation.mutate({ id: proposal.id })}
-									onReject={() => rejectMutation.mutate({ id: proposal.id })}
+									acceptError={failedProposalId === proposal.id ? acceptMutation.error?.message : undefined}
+									isAccepting={mutatingProposalId === proposal.id}
+									isRejecting={mutatingProposalId === proposal.id}
+									onAccept={() => {
+										setFailedProposalId(proposal.id);
+										setMutatingProposalId(proposal.id);
+										acceptMutation.mutate({ id: proposal.id });
+									}}
+									onReject={() => {
+										setFailedProposalId(null);
+										setMutatingProposalId(proposal.id);
+										rejectMutation.mutate({ id: proposal.id });
+									}}
 									proposal={proposal}
 								/>
 							)}
@@ -521,12 +550,14 @@ function RevisionProposalCard({
 	onReject,
 	isAccepting,
 	isRejecting,
+	acceptError,
 }: {
 	proposal: ProposalType;
 	onAccept: () => void;
 	onReject: () => void;
 	isAccepting: boolean;
 	isRejecting: boolean;
+	acceptError?: string;
 }) {
 	const isPending = proposal.status === "pending";
 	const isMutating = isAccepting || isRejecting;
@@ -550,13 +581,16 @@ function RevisionProposalCard({
 		expired: "text-ink-dim",
 	};
 
-	// Build preview text for replace proposals
+	// Build preview text
 	let preview: string | null = null;
 	if (proposal.operation === "replace") {
 		const source = proposal.targetHint ?? proposal.originalText;
 		if (source) {
 			preview = source.length > 80 ? `${source.slice(0, 80)}...` : source;
 		}
+	} else if (proposal.operation === "append" && proposal.replacementText) {
+		const text = proposal.replacementText;
+		preview = text.length > 80 ? `${text.slice(0, 80)}...` : text;
 	}
 
 	return (
@@ -603,6 +637,9 @@ function RevisionProposalCard({
 						{isRejecting ? "处理中..." : "拒绝"}
 					</button>
 				</div>
+			)}
+			{acceptError && (
+				<p className="mt-1.5 font-sans text-rust text-xs">{acceptError}</p>
 			)}
 		</div>
 	);
