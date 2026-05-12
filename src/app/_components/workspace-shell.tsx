@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ChapterEditorArea } from "./chapter-editor-area";
 import { CharactersPanel } from "./characters-panel";
 import { ChatPanel } from "./chat-panel";
+import type { DiffProposal } from "./extensions/inline-diff";
 import { ModelServiceDialog } from "./model-service-dialog";
 import { OutlinePanel } from "./outline-panel";
 import { ProjectSidebar } from "./project-sidebar";
@@ -17,6 +18,11 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 	const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 	const [showModelServices, setShowModelServices] = useState(false);
 	const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("chapters");
+	const [editorProposals, setEditorProposals] = useState<DiffProposal[]>([]);
+
+	const handleProposalsChange = useCallback((proposals: DiffProposal[]) => {
+		setEditorProposals(proposals);
+	}, []);
 
 	const centerPanel =
 		workspaceMode === "characters" ? (
@@ -26,7 +32,11 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 		) : workspaceMode === "worldNotes" ? (
 			<WorldNotesPanel projectId={projectId} />
 		) : (
-			<ChapterEditorArea chapterId={selectedChapterId} projectId={projectId} />
+			<ChapterEditorArea
+				chapterId={selectedChapterId}
+				projectId={projectId}
+				proposals={editorProposals}
+			/>
 		);
 
 	return (
@@ -45,6 +55,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 				activeSessionId={activeSessionId}
 				chapterId={selectedChapterId}
 				onOpenModelServices={() => setShowModelServices(true)}
+				onProposalsChange={handleProposalsChange}
 				onSessionChange={setActiveSessionId}
 				projectId={projectId}
 			/>

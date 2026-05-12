@@ -8,6 +8,9 @@ import {
 	tiptapToPlainText,
 } from "~/server/services/tiptap-converter";
 import { api } from "~/trpc/react";
+import type { DiffProposal } from "./extensions/inline-diff";
+import { createInlineDiffExtension } from "./extensions/inline-diff";
+import { InlineDiffToolbar } from "./inline-diff-toolbar";
 
 function statusBadge(status: string) {
 	const colors: Record<string, string> = {
@@ -32,9 +35,19 @@ function statusBadge(status: string) {
 export function ChapterEditorArea({
 	projectId,
 	chapterId,
+	proposals,
+	onAcceptProposal,
+	onRejectProposal,
+	isAcceptingProposal,
+	isRejectingProposal,
 }: {
 	projectId: string;
 	chapterId: string | null;
+	proposals?: DiffProposal[];
+	onAcceptProposal?: (id: string) => void;
+	onRejectProposal?: (id: string) => void;
+	isAcceptingProposal?: boolean;
+	isRejectingProposal?: boolean;
 }) {
 	if (!chapterId) {
 		return (
@@ -75,15 +88,35 @@ export function ChapterEditorArea({
 		);
 	}
 
-	return <ChapterEditorAreaInner chapterId={chapterId} projectId={projectId} />;
+	return (
+		<ChapterEditorAreaInner
+			chapterId={chapterId}
+			isAcceptingProposal={isAcceptingProposal}
+			isRejectingProposal={isRejectingProposal}
+			onAcceptProposal={onAcceptProposal}
+			onRejectProposal={onRejectProposal}
+			projectId={projectId}
+			proposals={proposals}
+		/>
+	);
 }
 
 function ChapterEditorAreaInner({
 	projectId,
 	chapterId,
+	proposals,
+	onAcceptProposal,
+	onRejectProposal,
+	isAcceptingProposal,
+	isRejectingProposal,
 }: {
 	projectId: string;
 	chapterId: string;
+	proposals?: DiffProposal[];
+	onAcceptProposal?: (id: string) => void;
+	onRejectProposal?: (id: string) => void;
+	isAcceptingProposal?: boolean;
+	isRejectingProposal?: boolean;
 }) {
 	const utils = api.useUtils();
 
@@ -138,8 +171,14 @@ function ChapterEditorAreaInner({
 		[doSave],
 	);
 
+	const inlineDiffExt = createInlineDiffExtension().configure({
+		proposals: proposals ?? [],
+		onAccept: onAcceptProposal ?? (() => {}),
+		onReject: onRejectProposal ?? (() => {}),
+	});
+
 	const editor = useEditor({
-		extensions: [StarterKit],
+		extensions: [StarterKit, inlineDiffExt],
 		content: chapterData?.content ? JSON.parse(chapterData.content) : "",
 		onUpdate: ({ editor: updatedEditor }) => {
 			const plainText = tiptapToPlainText(
@@ -208,6 +247,15 @@ function ChapterEditorAreaInner({
 			<div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto p-6">
 				<div className="editor-surface flex w-full max-w-[720px] flex-1 flex-col overflow-hidden">
 					{editor && <EditorContent editor={editor} />}
+					{proposals && proposals.length > 0 && (
+						<InlineDiffToolbar
+							isAccepting={isAcceptingProposal ?? false}
+							isRejecting={isRejectingProposal ?? false}
+							onAccept={onAcceptProposal ?? (() => {})}
+							onReject={onRejectProposal ?? (() => {})}
+							proposals={proposals.filter((p) => p.status === "pending")}
+						/>
+					)}
 					<div className="flex justify-end px-6 pb-3">
 						<span className="font-mono text-ink-dim/60 text-xs">
 							{wordCount.toLocaleString()} 字

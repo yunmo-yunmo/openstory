@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
+import type { DiffProposal } from "./extensions/inline-diff";
 
 interface SessionMessage {
 	role: string;
@@ -32,18 +33,22 @@ interface ProposalType {
 	decidedAt: Date | null;
 }
 
+export type { DiffProposal } from "./extensions/inline-diff";
+
 export function ChatPanel({
 	projectId,
 	chapterId,
 	activeSessionId,
 	onSessionChange,
 	onOpenModelServices,
+	onProposalsChange,
 }: {
 	projectId: string;
 	chapterId: string | null;
 	activeSessionId: string | null;
 	onSessionChange: (id: string | null) => void;
 	onOpenModelServices?: () => void;
+	onProposalsChange?: (proposals: DiffProposal[]) => void;
 }) {
 	const utils = api.useUtils();
 
@@ -147,12 +152,12 @@ export function ChatPanel({
 	// State 3: Active session
 	return (
 		<ChatPanelInner
-				activeSessionId={activeSessionId}
-				chapterId={chapterId}
-				onOpenModelServices={onOpenModelServices}
-				onSessionChange={onSessionChange}
-				projectId={projectId}
-			/>
+			activeSessionId={activeSessionId}
+			chapterId={chapterId}
+			onOpenModelServices={onOpenModelServices}
+			onSessionChange={onSessionChange}
+			projectId={projectId}
+		/>
 	);
 }
 
@@ -162,12 +167,14 @@ function ChatPanelInner({
 	chapterId,
 	onSessionChange,
 	onOpenModelServices,
+	onProposalsChange,
 }: {
 	projectId: string;
 	activeSessionId: string;
 	chapterId: string | null;
 	onSessionChange: (id: string | null) => void;
 	onOpenModelServices?: () => void;
+	onProposalsChange?: (proposals: DiffProposal[]) => void;
 }) {
 	const [input, setInput] = useState("");
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -207,8 +214,18 @@ function ChatPanelInner({
 		return map;
 	}, [proposalsData]);
 
+	// Propagate proposals to editor for inline diff
+	useEffect(() => {
+		if (onProposalsChange) {
+			const pending = Array.from(proposalsMap.values()) as DiffProposal[];
+			onProposalsChange(pending);
+		}
+	}, [proposalsMap, onProposalsChange]);
+
 	// Per-proposal mutation tracking (tRPC mutations are global, not scoped)
-	const [mutatingProposalId, setMutatingProposalId] = useState<string | null>(null);
+	const [mutatingProposalId, setMutatingProposalId] = useState<string | null>(
+		null,
+	);
 	const [failedProposalId, setFailedProposalId] = useState<string | null>(null);
 
 	const acceptMutation = api.revisionProposal.accept.useMutation({
@@ -374,7 +391,11 @@ function ChatPanelInner({
 							<MessageBubble message={msg} />
 							{proposal && (
 								<RevisionProposalCard
-									acceptError={failedProposalId === proposal.id ? acceptMutation.error?.message : undefined}
+									acceptError={
+										failedProposalId === proposal.id
+											? acceptMutation.error?.message
+											: undefined
+									}
 									isAccepting={mutatingProposalId === proposal.id}
 									isRejecting={mutatingProposalId === proposal.id}
 									onAccept={() => {
@@ -617,26 +638,11 @@ function RevisionProposalCard({
 				</p>
 			)}
 
-			{/* Action buttons — only show when pending */}
+			{/* Pending hint — inline diff in editor handles accept/reject */}
 			{isPending && (
-				<div className="mt-2 flex items-center gap-2">
-					<button
-						className="rounded-sm border border-sage/40 bg-sage/10 px-2.5 py-1 font-sans text-sage text-xs transition-colors hover:border-sage hover:bg-sage/20 disabled:cursor-not-allowed disabled:opacity-50"
-						disabled={isMutating}
-						onClick={onAccept}
-						type="button"
-					>
-						{isAccepting ? "处理中..." : "采纳"}
-					</button>
-					<button
-						className="rounded-sm border border-rust/40 bg-rust/10 px-2.5 py-1 font-sans text-rust text-xs transition-colors hover:border-rust hover:bg-rust/20 disabled:cursor-not-allowed disabled:opacity-50"
-						disabled={isMutating}
-						onClick={onReject}
-						type="button"
-					>
-						{isRejecting ? "处理中..." : "拒绝"}
-					</button>
-				</div>
+				<p className="mt-1.5 font-sans text-ink-dim text-xs italic">
+					在编辑器中查看修改建议
+				</p>
 			)}
 			{acceptError && (
 				<p className="mt-1.5 font-sans text-rust text-xs">{acceptError}</p>
