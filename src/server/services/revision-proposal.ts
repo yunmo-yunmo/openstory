@@ -367,20 +367,55 @@ export async function acceptRevisionProposal(
 			);
 		}
 
-		const currentPlainText = tiptapToPlainText(proposal.chapter.content);
-		let newPlainText: string;
+		// Try TipTap-level operation first (preserves rich-text formatting)
+		let newContent: string;
+		let newWordCount: number;
+
 		if (proposal.operation === "append") {
-			newPlainText = appendText(currentPlainText, proposal.replacementText);
-		} else if (proposal.operation === "replace") {
-			const replaced = replaceText(
-				currentPlainText,
-				proposal.originalText,
+			const tiptapResult = appendToTipTapDoc(
+				proposal.chapter.content,
 				proposal.replacementText,
 			);
-			if (!replaced.ok) {
-				return expireProposal(tx, proposal.id, replaced.message);
+			if (tiptapResult) {
+				newContent = tiptapResult;
+				newWordCount = countWords(tiptapToRawText(newContent));
+			} else {
+				const currentPlainText = tiptapToPlainText(proposal.chapter.content);
+				const plainResult = appendText(currentPlainText, proposal.replacementText);
+				newContent = plainTextToTipTap(plainResult);
+				newWordCount = countWords(plainResult);
 			}
-			newPlainText = replaced.plainText;
+		} else if (proposal.operation === "replace") {
+			const rawText = tiptapToRawText(proposal.chapter.content);
+			const occurrences = countExactOccurrences(
+				rawText,
+				proposal.originalText ?? "",
+			);
+			if (occurrences !== 1) {
+				return expireProposal(tx, proposal.id, "Replacement target is no longer unique.");
+			}
+
+			const tiptapResult = replaceParagraphsInTipTapDoc(
+				proposal.chapter.content,
+				proposal.originalText ?? "",
+				proposal.replacementText,
+			);
+			if (tiptapResult) {
+				newContent = tiptapResult;
+				newWordCount = countWords(tiptapToRawText(newContent));
+			} else {
+				const currentPlainText = tiptapToPlainText(proposal.chapter.content);
+				const replaced = replaceText(
+					currentPlainText,
+					proposal.originalText,
+					proposal.replacementText,
+				);
+				if (!replaced.ok) {
+					return expireProposal(tx, proposal.id, replaced.message);
+				}
+				newContent = plainTextToTipTap(replaced.plainText);
+				newWordCount = countWords(replaced.plainText);
+			}
 		} else {
 			return {
 				ok: false,
@@ -392,8 +427,8 @@ export async function acceptRevisionProposal(
 		const updatedChapter = await tx.chapter.update({
 			where: { id: proposal.chapterId, projectId: proposal.projectId },
 			data: {
-				content: plainTextToTipTap(newPlainText),
-				wordCount: countWords(newPlainText),
+				content: newContent,
+				wordCount: newWordCount,
 			},
 		});
 

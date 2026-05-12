@@ -245,6 +245,43 @@ describe("revision proposal service", () => {
 		});
 		assert.equal(tiptapToPlainText(state.chapter.content), "第一段。");
 	});
+
+	test("acceptRevisionProposal preserves bold marks when replacing via TipTap-level path", async () => {
+		const doc = JSON.stringify({
+			type: "doc",
+			content: [
+				{
+					type: "paragraph",
+					content: [
+						{ type: "text", text: "保持", marks: [{ type: "bold" }] },
+					],
+				},
+				{
+					type: "paragraph",
+					content: [{ type: "text", text: "替换这段文字因为太长了需要足够的长度才能匹配成功。" }],
+				},
+			],
+		});
+		const { db, state } = createDbState({
+			chapterText: "placeholder",
+			proposal: {
+				operation: "replace",
+				originalText: "替换这段文字因为太长了需要足够的长度才能匹配成功。",
+				replacementText: "新的内容。",
+			},
+		});
+		state.chapter.content = doc;
+		state.proposal.baseContentHash = hashChapterContent(doc);
+
+		const result = await acceptRevisionProposal(db as never, {
+			proposalId: "proposal-1",
+			userId: "user-1",
+		});
+
+		assert.equal(result.ok, true);
+		const parsed = JSON.parse(state.chapter.content);
+		assert.deepEqual(parsed.content[0].content[0].marks, [{ type: "bold" }]);
+	});
 });
 
 describe("TipTap-level proposal operations", () => {
