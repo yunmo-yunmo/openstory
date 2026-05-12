@@ -41,6 +41,30 @@ export function tiptapToPlainText(json: string): string {
 	}
 }
 
+function nodeToRawText(node: TipTapNode): string {
+	if (node.type === "hardBreak") {
+		return "\n";
+	}
+
+	if (node.text !== undefined) {
+		return node.text;
+	}
+	if (node.content) {
+		const separator = node.type === "doc" ? "\n\n" : "";
+		return node.content.map((child) => nodeToRawText(child)).join(separator);
+	}
+	return "";
+}
+
+export function tiptapToRawText(json: string): string {
+	try {
+		const doc: TipTapDoc = JSON.parse(json);
+		return nodeToRawText(doc);
+	} catch {
+		return json;
+	}
+}
+
 export function plainTextToTipTap(text: string): string {
 	const paragraphs = text.split(/\n\s*\n/).filter(Boolean);
 	const content: TipTapNode[] = paragraphs.map((p) => {
