@@ -76,6 +76,7 @@ model Project {
     worldNotes  WorldNote[]
     outlines    Outline[]
     aiSessions  AISession[]
+    revisionProposals ChapterRevisionProposal[]
 
     @@index([userId])
 }
@@ -95,6 +96,7 @@ model Chapter {
 
     project  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
     snapshots ChapterSnapshot[]
+    revisionProposals ChapterRevisionProposal[]
 
     @@index([projectId, order])
 }
@@ -171,9 +173,35 @@ model AISession {
     updatedAt DateTime @updatedAt
 
     project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    revisionProposals ChapterRevisionProposal[]
 
     @@index([projectId])
     @@index([chapterId])
+}
+
+model ChapterRevisionProposal {
+    id              String   @id @default(cuid())
+    projectId       String
+    chapterId       String
+    sessionId       String?
+    status          String   @default("pending") // pending | accepted | rejected | expired
+    operation       String   // append | replace
+    instruction     String
+    targetHint      String?
+    originalText    String?
+    replacementText String
+    baseContentHash String
+    createdAt       DateTime @default(now())
+    decidedAt       DateTime?
+
+    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+    session AISession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+    @@index([projectId])
+    @@index([chapterId])
+    @@index([sessionId])
+    @@index([status])
 }
 
 model LLMConfig {

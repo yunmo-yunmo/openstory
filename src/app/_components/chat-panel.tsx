@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 
 interface SessionMessage {
 	role: string;
 	content: string;
+	proposalId?: string;
 	toolCalls?: Array<{
 		name: string;
 		args: Record<string, unknown>;
@@ -14,6 +15,21 @@ interface SessionMessage {
 		name: string;
 		result: unknown;
 	}>;
+}
+
+type ProposalStatus = "pending" | "accepted" | "rejected" | "expired";
+type ProposalOperation = "append" | "replace";
+
+interface ProposalType {
+	id: string;
+	status: ProposalStatus;
+	operation: ProposalOperation;
+	instruction: string;
+	targetHint: string | null;
+	originalText: string | null;
+	replacementText: string | null;
+	createdAt: Date;
+	decidedAt: Date | null;
 }
 
 export function ChatPanel({
@@ -169,6 +185,44 @@ function ChatPanelInner({
 		? (sessionData.messages as SessionMessage[])
 		: [];
 
+	// Revision proposals
+	const { data: proposalsData } = api.revisionProposal.listBySession.useQuery(
+		{ sessionId: activeSessionId },
+		{ enabled: !!activeSessionId },
+	);
+
+	const proposalsMap = useMemo(() => {
+		const map = new Map<string, ProposalType>();
+		for (const raw of proposalsData ?? []) {
+			const p: ProposalType = {
+				...raw,
+				status: raw.status as ProposalStatus,
+				operation: raw.operation as ProposalOperation,
+			};
+			map.set(p.id, p);
+		}
+		return map;
+	}, [proposalsData]);
+
+	const acceptMutation = api.revisionProposal.accept.useMutation({
+		onSuccess: () => {
+			void utils.revisionProposal.listBySession.invalidate({
+				sessionId: activeSessionId,
+			});
+			void utils.session.getById.invalidate({ id: activeSessionId });
+			void utils.chapter.listByProject.invalidate({ projectId });
+		},
+	});
+
+	const rejectMutation = api.revisionProposal.reject.useMutation({
+		onSuccess: () => {
+			void utils.revisionProposal.listBySession.invalidate({
+				sessionId: activeSessionId,
+			});
+			void utils.session.getById.invalidate({ id: activeSessionId });
+		},
+	});
+
 	// Mutations
 	const sendMutation = api.session.send.useMutation({
 		onSuccess: () => {
@@ -291,9 +345,25 @@ function ChatPanelInner({
 					</p>
 				)}
 
-				{messages.map((msg) => (
-					<MessageBubble key={getMessageKey(msg)} message={msg} />
-				))}
+				{messages.map((msg) => {
+					const proposal = msg.proposalId
+						? proposalsMap.get(msg.proposalId)
+						: undefined;
+					return (
+						<div key={getMessageKey(msg) + (proposal?.status ?? "")}>
+							<MessageBubble message={msg} />
+							{proposal && (
+								<RevisionProposalCard
+									isAccepting={acceptMutation.isPending}
+									isRejecting={rejectMutation.isPending}
+									onAccept={() => acceptMutation.mutate({ id: proposal.id })}
+									onReject={() => rejectMutation.mutate({ id: proposal.id })}
+									proposal={proposal}
+								/>
+							)}
+						</div>
+					);
+				})}
 
 				{/* Thinking indicator */}
 				{sendMutation.isPending && (
@@ -441,6 +511,99 @@ function MessageBubble({ message }: { message: SessionMessage }) {
 					</div>
 				)}
 			</div>
+		</div>
+	);
+}
+
+function RevisionProposalCard({
+	proposal,
+	onAccept,
+	onReject,
+	isAccepting,
+	isRejecting,
+}: {
+	proposal: ProposalType;
+	onAccept: () => void;
+	onReject: () => void;
+	isAccepting: boolean;
+	isRejecting: boolean;
+}) {
+	const isPending = proposal.status === "pending";
+	const isMutating = isAccepting || isRejecting;
+
+	const operationLabel: Record<ProposalOperation, string> = {
+		append: "追加提案",
+		replace: "替换提案",
+	};
+
+	const statusLabel: Record<ProposalStatus, string> = {
+		pending: "待采纳",
+		accepted: "已采纳",
+		rejected: "已拒绝",
+		expired: "已过期",
+	};
+
+	const statusColor: Record<ProposalStatus, string> = {
+		pending: "text-amber",
+		accepted: "text-sage",
+		rejected: "text-rust",
+		expired: "text-ink-dim",
+	};
+
+	// Build preview text for replace proposals
+	let preview: string | null = null;
+	if (proposal.operation === "replace") {
+		const source = proposal.targetHint ?? proposal.originalText;
+		if (source) {
+			preview = source.length > 80 ? `${source.slice(0, 80)}...` : source;
+		}
+	}
+
+	return (
+		<div className="mb-3 ml-0 border-amber/40 border-l-2 bg-study-700/40 px-3 py-2.5">
+			{/* Header: operation badge + status badge */}
+			<div className="mb-1.5 flex items-center gap-2">
+				<span className="rounded-sm bg-amber/15 px-1.5 py-0.5 font-sans text-amber text-xs">
+					{operationLabel[proposal.operation]}
+				</span>
+				<span className={`font-sans text-xs ${statusColor[proposal.status]}`}>
+					{statusLabel[proposal.status]}
+				</span>
+			</div>
+
+			{/* Instruction */}
+			<p className="font-sans text-ink-muted text-sm leading-relaxed">
+				{proposal.instruction}
+			</p>
+
+			{/* Preview for replace */}
+			{preview && (
+				<p className="mt-1.5 font-mono text-ink-dim text-xs italic">
+					{preview}
+				</p>
+			)}
+
+			{/* Action buttons — only show when pending */}
+			{isPending && (
+				<div className="mt-2 flex items-center gap-2">
+					<button
+						className="rounded-sm border border-sage/40 bg-sage/10 px-2.5 py-1 font-sans text-sage text-xs transition-colors hover:border-sage hover:bg-sage/20 disabled:cursor-not-allowed disabled:opacity-50"
+						disabled={isMutating}
+						onClick={onAccept}
+						type="button"
+					>
+						{isAccepting ? "处理中..." : "采纳"}
+					</button>
+					<button
+						className="rounded-sm border border-rust/40 bg-rust/10 px-2.5 py-1 font-sans text-rust text-xs transition-colors hover:border-rust hover:bg-rust/20 disabled:cursor-not-allowed disabled:opacity-50"
+						disabled={isMutating}
+						onClick={onReject}
+						type="button"
+					>
+						{isRejecting ? "处理中..." : "拒绝"}
+					</button>
+				</div>
+			)}
 		</div>
 	);
 }

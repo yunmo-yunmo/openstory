@@ -5,6 +5,13 @@ import { assembleContext } from "~/server/ai/context-manager";
 import { createToolRegistry } from "~/server/ai/tools/registry";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createLLMClient } from "~/server/llm/client";
+import { tiptapToPlainText } from "~/server/services/tiptap-converter";
+import {
+	hasRevisionEditIntent,
+	hashChapterContent,
+	revisionProposalDraftSchema,
+	validateRevisionProposalDraft,
+} from "~/server/services/revision-proposal";
 
 export const sessionRouter = createTRPCRouter({
 	create: protectedProcedure
@@ -97,6 +104,202 @@ export const sessionRouter = createTRPCRouter({
 				messages = [];
 			}
 			messages.push({ role: "user", content: input.message });
+
+			// --- Revision proposal path ---
+			// Attempt structured proposal generation when the user message contains
+			// edit-intent keywords and the session is bound to a chapter.
+			if (hasRevisionEditIntent(input.message) && session.chapterId) {
+				const chapter = await ctx.db.chapter.findFirst({
+					where: {
+						id: session.chapterId,
+						projectId: session.projectId,
+					},
+				});
+
+				if (chapter) {
+					const baseContentHash = hashChapterContent(chapter.content);
+					const chapterPlainText = tiptapToPlainText(chapter.content);
+
+					// Choose prompt language based on whether the user message contains CJK
+					const isChinese = /\p{Script=Han}/u.test(input.message);
+
+					const systemPrompt = isChinese
+						? `你是一个小说写作修订助手。用户希望对章节进行修改。请根据用户的要求生成一个修订提案。
+
+当前章节内容：
+---
+${chapterPlainText}
+---
+
+规则：
+- 如果用户要求续写、扩写内容，使用 "append" 操作，只需提供 instruction 和 replacementText
+- 如果用户要求改写、润色、重写特定段落，使用 "replace" 操作，需要提供 targetHint（简述修改目标）、originalText（从章节中复制的原文片段，必须完全匹配）、replacementText（替换后的文本）
+- originalText 必须是章节原文的精确子串，不可自行改写或省略
+- 替换目标至少包含 20 个中文字符或 80 个非空白英文字符
+- replacementText 应保持与原文风格一致`
+						: `You are a novel revision assistant. The user wants to modify a chapter. Generate a revision proposal based on their request.
+
+Current chapter content:
+---
+${chapterPlainText}
+---
+
+Rules:
+- For continuation/expansion requests, use "append" operation with instruction and replacementText
+- For rewriting/polishing specific sections, use "replace" operation with targetHint, originalText (exact substring from chapter), and replacementText
+- originalText must be an exact substring from the chapter text
+- Replacement target must contain at least 80 non-whitespace characters for English or 20 CJK characters
+- replacementText should match the author's style`;
+
+					const revisionMessages: ModelMessage[] = [
+						{ role: "system", content: systemPrompt },
+						...(messages as ModelMessage[]),
+					];
+
+					try {
+						const llmClient = createLLMClient({
+							db: ctx.db,
+							userId: ctx.session.user.id,
+						});
+
+						const { object: draft } = await llmClient.generateObject({
+							task: "revision",
+							messages: revisionMessages,
+							schema: revisionProposalDraftSchema,
+							temperature: 0.7,
+						});
+
+						// Re-check chapter hash to detect concurrent edits
+						const chapterNow = await ctx.db.chapter.findFirst({
+							where: {
+								id: session.chapterId,
+								projectId: session.projectId,
+							},
+						});
+						if (
+							!chapterNow ||
+							hashChapterContent(chapterNow.content) !== baseContentHash
+						) {
+							// Chapter changed concurrently — fall through to normal chat
+						} else {
+							const validation = validateRevisionProposalDraft(
+								draft,
+								tiptapToPlainText(chapterNow.content),
+							);
+
+							if (validation.ok) {
+								const proposal =
+									await ctx.db.chapterRevisionProposal.create({
+										data: {
+											projectId: session.projectId,
+											chapterId: session.chapterId,
+											sessionId: session.id,
+											status: "pending",
+											operation: draft.operation,
+											instruction: draft.instruction,
+											targetHint:
+												draft.operation === "replace"
+													? draft.targetHint
+													: null,
+											originalText:
+												draft.operation === "replace"
+													? draft.originalText
+													: null,
+											replacementText: draft.replacementText,
+											baseContentHash,
+										},
+									});
+
+								const proposalSummary =
+									draft.operation === "append"
+										? `已为您生成追加提案：${draft.instruction}`
+										: `已为您生成替换提案：${draft.targetHint}`;
+
+								const assistantMessage: Record<string, unknown> = {
+									role: "assistant",
+									content: proposalSummary,
+									proposalId: proposal.id,
+								};
+
+								// Atomically merge messages
+								const updated =
+									await ctx.db.$transaction(async (tx) => {
+										const current = await tx.aISession.findFirst({
+											where: {
+												id: input.id,
+												project: {
+													userId: ctx.session.user.id,
+												},
+											},
+										});
+										if (!current)
+											throw new TRPCError({
+												code: "NOT_FOUND",
+											});
+
+										let currentMessages: {
+											role: string;
+											content: string;
+										}[];
+										try {
+											currentMessages = JSON.parse(
+												current.messages,
+											);
+										} catch {
+											currentMessages = [];
+										}
+										currentMessages.push({
+											role: "user",
+											content: input.message,
+										});
+										currentMessages.push(
+											assistantMessage as {
+												role: string;
+												content: string;
+											},
+										);
+
+										const data: {
+											messages: string;
+											title?: string;
+										} = {
+											messages: JSON.stringify(
+												currentMessages,
+											),
+										};
+										if (!current.title) {
+											data.title =
+												input.message.slice(0, 100);
+										}
+
+										return tx.aISession.update({
+											where: { id: input.id },
+											data,
+										});
+									});
+
+								return {
+									message: {
+										role: "assistant" as const,
+										content: proposalSummary,
+										proposalId: proposal.id,
+									},
+									session: {
+										id: updated.id,
+										title: updated.title,
+										updatedAt: updated.updatedAt,
+									},
+								};
+							}
+							// Draft validation failed — fall through to normal chat
+						}
+					} catch {
+						// generateObject failed (structured output error, etc.)
+						// Fall through to normal chat
+					}
+				}
+			}
+			// --- End revision proposal path ---
 
 			try {
 				// Build context — either full project context (L0+L1) or a minimal system prompt

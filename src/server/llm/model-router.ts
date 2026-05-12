@@ -12,6 +12,7 @@ const DEFAULT_TASK_MODELS: Record<
 	summary: { providerType: "anthropic", model: "claude-haiku-4-20250514" },
 	consistency: { providerType: "anthropic", model: "claude-sonnet-4-20250514" },
 	search: { providerType: "anthropic", model: "claude-haiku-4-20250514" },
+	revision: { providerType: "anthropic", model: "claude-sonnet-4-20250514" },
 };
 
 /**

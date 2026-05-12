@@ -25,6 +25,7 @@ All routers currently use `protectedProcedure`. Requests require a valid session
 | `worldNote` | `listByProject`, `create`, `update`, `delete` |
 | `search` | `searchAll` |
 | `session` | `create`, `list`, `getById`, `send`, `delete` |
+| `revisionProposal` | `listBySession`, `accept`, `reject` |
 | `llmConfig` | `list`, `create`, `update`, `delete`, `setActive`, `status`, `fetchModels`, `testConnection` |
 
 ## Project
@@ -570,7 +571,7 @@ Output:
 
 ```typescript
 {
-  message: { role: "assistant"; content: string };
+  message: { role: "assistant"; content: string; proposalId?: string };
   session: {
     id: string;
     title: string | null;
@@ -578,6 +579,8 @@ Output:
   };
 }
 ```
+
+When the user message triggers edit intent and a valid proposal is generated, the response includes `proposalId`. Otherwise `proposalId` is omitted and the normal chat response is returned.
 
 ### `session.delete`
 
@@ -590,6 +593,63 @@ Input:
 ```
 
 Deletes an AI session owned by the current user.
+
+## Revision Proposal
+
+### `revisionProposal.listBySession`
+
+Query.
+
+Input:
+
+```typescript
+{ sessionId: string }
+```
+
+Returns revision proposals for the session, scoped through session.project.userId ownership. Ordered by `createdAt desc`.
+
+Select: id, status, operation, instruction, targetHint, originalText, replacementText, createdAt, decidedAt.
+
+### `revisionProposal.accept`
+
+Mutation.
+
+Input:
+
+```typescript
+{ id: string }
+```
+
+Accepts a pending revision proposal. Delegates to the service layer which:
+- Verifies ownership via `project.userId`
+- Checks proposal is still `pending`
+- Verifies `baseContentHash` matches current chapter content (detects concurrent edits)
+- For `append`: appends replacementText to chapter plain text
+- For `replace`: finds and replaces exactly one match of originalText
+- Updates chapter content (converted back to TipTap JSON) and word count
+- Creates a chapter snapshot
+- Marks proposal as `accepted`
+- Triggers background summary/consistency agents (non-blocking)
+
+Returns `{ proposalId: string, status: string }`.
+
+Error codes:
+- `NOT_FOUND` -- proposal not found or not owned by user
+- `BAD_REQUEST` -- proposal is not in pending status
+- `CONFLICT` -- chapter changed since proposal was created, or replace target no longer unique; proposal is expired
+
+### `revisionProposal.reject`
+
+Mutation.
+
+Input:
+
+```typescript
+{ id: string }
+```
+
+Rejects a pending revision proposal. Verifies ownership and pending status.
+Returns `{ proposalId: string, status: string }`.
 
 ## LLM Config
 

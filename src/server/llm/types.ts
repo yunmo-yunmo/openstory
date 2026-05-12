@@ -12,7 +12,8 @@ export type TaskType =
 	| "writing"
 	| "summary"
 	| "consistency"
-	| "search";
+	| "search"
+	| "revision";
 
 export interface ResolvedConfig {
 	providerType: ProviderType;
