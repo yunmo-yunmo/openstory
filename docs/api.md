@@ -606,7 +606,7 @@ Input:
 { sessionId: string }
 ```
 
-Returns revision proposals for the session, scoped through session.project.userId ownership. Ordered by `createdAt desc`.
+Returns revision proposals for the session, scoped through session.project.userId ownership. Ordered by `createdAt asc`.
 
 Select: id, status, operation, instruction, targetHint, originalText, replacementText, createdAt, decidedAt.
 
