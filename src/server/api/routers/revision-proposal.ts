@@ -10,9 +10,11 @@ import {
 type AcceptDb = Parameters<typeof acceptRevisionProposal>[0];
 type RejectDb = Parameters<typeof rejectRevisionProposal>[0];
 
-function throwForResult(
-	result: { ok: false; code: string; message: string },
-): never {
+function throwForResult(result: {
+	ok: false;
+	code: string;
+	message: string;
+}): never {
 	const codeMap: Record<string, "NOT_FOUND" | "BAD_REQUEST" | "CONFLICT"> = {
 		NOT_FOUND: "NOT_FOUND",
 		BAD_REQUEST: "BAD_REQUEST",
@@ -59,10 +61,13 @@ export const revisionProposalRouter = createTRPCRouter({
 	accept: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			const result = await acceptRevisionProposal(ctx.db as unknown as AcceptDb, {
-				proposalId: input.id,
-				userId: ctx.session.user.id,
-			});
+			const result = await acceptRevisionProposal(
+				ctx.db as unknown as AcceptDb,
+				{
+					proposalId: input.id,
+					userId: ctx.session.user.id,
+				},
+			);
 
 			if (!result.ok) {
 				throwForResult(result);
@@ -74,7 +79,10 @@ export const revisionProposalRouter = createTRPCRouter({
 				projectId: result.projectId,
 				chapterId: result.chapterId,
 			}).catch((error) => {
-				console.error("[revisionProposal.accept] background agents failed:", error);
+				console.error(
+					"[revisionProposal.accept] background agents failed:",
+					error,
+				);
 			});
 
 			return {
@@ -86,10 +94,13 @@ export const revisionProposalRouter = createTRPCRouter({
 	reject: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			const result = await rejectRevisionProposal(ctx.db as unknown as RejectDb, {
-				proposalId: input.id,
-				userId: ctx.session.user.id,
-			});
+			const result = await rejectRevisionProposal(
+				ctx.db as unknown as RejectDb,
+				{
+					proposalId: input.id,
+					userId: ctx.session.user.id,
+				},
+			);
 
 			if (!result.ok) {
 				throwForResult(result);

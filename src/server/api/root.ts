@@ -4,8 +4,8 @@ import { characterRouter } from "~/server/api/routers/character";
 import { createLLMConfigRouter } from "~/server/api/routers/llm-config";
 import { outlineRouter } from "~/server/api/routers/outline";
 import { projectRouter } from "~/server/api/routers/project";
-import { searchRouter } from "~/server/api/routers/search";
 import { revisionProposalRouter } from "~/server/api/routers/revision-proposal";
+import { searchRouter } from "~/server/api/routers/search";
 import { sessionRouter } from "~/server/api/routers/session";
 import { worldNoteRouter } from "~/server/api/routers/world-note";
 import {

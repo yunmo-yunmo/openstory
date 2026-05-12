@@ -11,9 +11,11 @@ import { TRPCError } from "@trpc/server";
 // verifying the TRPCError properties. This avoids setting up the entire
 // tRPC caller infrastructure while still covering the mapping contract.
 
-function throwForResult(
-	result: { ok: false; code: string; message: string },
-): never {
+function throwForResult(result: {
+	ok: false;
+	code: string;
+	message: string;
+}): never {
 	const codeMap: Record<string, "NOT_FOUND" | "BAD_REQUEST" | "CONFLICT"> = {
 		NOT_FOUND: "NOT_FOUND",
 		BAD_REQUEST: "BAD_REQUEST",
@@ -25,7 +27,9 @@ function throwForResult(
 	});
 }
 
-function handleResult(result: { ok: true } | { ok: false; code: string; message: string }) {
+function handleResult(
+	result: { ok: true } | { ok: false; code: string; message: string },
+) {
 	if (!result.ok) {
 		throwForResult(result);
 	}

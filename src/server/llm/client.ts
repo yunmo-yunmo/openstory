@@ -1,8 +1,12 @@
 import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import type { ModelMessage, ToolSet } from "ai";
-import { generateObject as aiGenerateObject, generateText, streamText } from "ai";
-import { z } from "zod";
+import {
+	generateObject as aiGenerateObject,
+	generateText,
+	streamText,
+} from "ai";
+import type { z } from "zod";
 import { routeModel } from "./model-router";
 import { getProviderFactory } from "./provider-registry";
 import { defaultRateLimiter } from "./rate-limiter";

@@ -323,7 +323,15 @@ function ChatPanelInner({
 		} else if (chapterId) {
 			onSelectionConsumed?.();
 		}
-	}, [pendingSelection, activeSessionId, hasUsableConfig]);
+	}, [
+		pendingSelection,
+		activeSessionId,
+		hasUsableConfig,
+		sendMutation.mutate,
+		sendMutation.isPending,
+		onSelectionConsumed,
+		chapterId,
+	]);
 
 	// Auto-resize textarea
 	const adjustTextareaHeight = useCallback(() => {
@@ -700,7 +708,7 @@ function RevisionProposalCard({
 	acceptError?: string;
 }) {
 	const isPending = proposal.status === "pending";
-	const isMutating = isAccepting || isRejecting;
+	const _isMutating = isAccepting || isRejecting;
 
 	const operationLabel: Record<ProposalOperation, string> = {
 		append: "追加提案",
