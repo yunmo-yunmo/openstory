@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hasRevisionEditIntent } from "~/server/services/revision-proposal";
 import { api } from "~/trpc/react";
 import type { DiffProposal } from "./extensions/inline-diff";
 import type { SelectionData } from "./extensions/selection-trigger";
@@ -283,6 +284,8 @@ function ChatPanelInner({
 		},
 	});
 
+	const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
+
 	// Auto-scroll to bottom on new messages
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -334,11 +337,79 @@ function ChatPanelInner({
 		adjustTextareaHeight();
 	}, [adjustTextareaHeight]);
 
-	const handleSend = useCallback(() => {
+	const handleSend = useCallback(async () => {
 		const trimmed = input.trim();
-		if (!trimmed || sendMutation.isPending || !hasUsableConfig) return;
-		sendMutation.mutate({ id: activeSessionId, message: trimmed });
-	}, [input, activeSessionId, sendMutation, hasUsableConfig]);
+		if (
+			!trimmed ||
+			sendMutation.isPending ||
+			!hasUsableConfig ||
+			streamingMessage !== null
+		)
+			return;
+
+		// Check if this is an edit-intent message (revision proposal path)
+		if (hasRevisionEditIntent(trimmed)) {
+			sendMutation.mutate({ id: activeSessionId, message: trimmed });
+			return;
+		}
+
+		// Streaming path for general chat
+		setInput("");
+		setStreamingMessage("");
+
+		try {
+			// Build full message history for the API
+			const allMessages = [
+				...(sessionData?.messages ?? []),
+				{ role: "user", content: trimmed },
+			];
+
+			const response = await fetch("/api/chat/stream", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					messages: allMessages,
+					sessionId: activeSessionId,
+					projectId,
+				}),
+			});
+
+			if (!response.ok || !response.body) {
+				setStreamingMessage(null);
+				sendMutation.mutate({ id: activeSessionId, message: trimmed });
+				return;
+			}
+
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let fullText = "";
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				fullText += decoder.decode(value, { stream: true });
+				setStreamingMessage(fullText);
+			}
+
+			setStreamingMessage(null);
+			// Save both user and assistant messages via tRPC (re-send to persist)
+			void utils.session.getById.invalidate({ id: activeSessionId });
+			void utils.session.list.invalidate({ projectId });
+			sendMutation.mutate({ id: activeSessionId, message: trimmed });
+		} catch {
+			setStreamingMessage(null);
+			sendMutation.mutate({ id: activeSessionId, message: trimmed });
+		}
+	}, [
+		input,
+		activeSessionId,
+		sendMutation,
+		hasUsableConfig,
+		streamingMessage,
+		sessionData,
+		projectId,
+		utils,
+	]);
 
 	const handleKeyDown = useCallback(
 		(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
