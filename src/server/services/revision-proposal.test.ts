@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
 	acceptRevisionProposal,
-	hasRevisionEditIntent,
+	appendToTipTapDoc,
 	hashChapterContent,
+	hasRevisionEditIntent,
+	replaceParagraphsInTipTapDoc,
 	validateRevisionProposalDraft,
 } from "./revision-proposal";
-import { tiptapToPlainText } from "./tiptap-converter";
+import { tiptapToPlainText, tiptapToRawText } from "./tiptap-converter";
 
 function tiptapDoc(text: string): string {
 	return JSON.stringify({
@@ -137,7 +139,10 @@ describe("revision proposal service", () => {
 		});
 
 		assert.equal(result.ok, true);
-		assert.equal(tiptapToPlainText(state.chapter.content), "第一段。\n\n第二段。");
+		assert.equal(
+			tiptapToPlainText(state.chapter.content),
+			"第一段。\n\n第二段。",
+		);
 		assert.equal(state.proposal.status, "accepted");
 		assert.equal(state.snapshots.length, 1);
 	});
@@ -191,7 +196,10 @@ describe("revision proposal service", () => {
 			message: "Replacement target is no longer unique.",
 		});
 		assert.equal(state.proposal.status, "expired");
-		assert.equal(tiptapToPlainText(state.chapter.content), `${original}\n\n${original}`);
+		assert.equal(
+			tiptapToPlainText(state.chapter.content),
+			`${original}\n\n${original}`,
+		);
 	});
 
 	test("acceptRevisionProposal expires stale proposals without writing", async () => {
@@ -236,5 +244,50 @@ describe("revision proposal service", () => {
 			message: "Only pending proposals can be accepted.",
 		});
 		assert.equal(tiptapToPlainText(state.chapter.content), "第一段。");
+	});
+});
+
+describe("TipTap-level proposal operations", () => {
+	test("appendToTipTapDoc adds paragraphs at the end", () => {
+		const doc = tiptapDoc("第一段。");
+		const result = appendToTipTapDoc(doc, "第二段。");
+		assert.equal(tiptapToRawText(result), "第一段。\n\n第二段。");
+	});
+
+	test("appendToTipTapDoc handles empty doc", () => {
+		const doc = tiptapDoc("");
+		const result = appendToTipTapDoc(doc, "新内容。");
+		assert.equal(tiptapToRawText(result), "新内容。");
+	});
+
+	test("replaceParagraphsInTipTapDoc replaces paragraphs containing originalText", () => {
+		const doc = tiptapDoc("开头。\n\n中间段落。\n\n结尾。");
+		const result = replaceParagraphsInTipTapDoc(doc, "中间段落。", "替换后。");
+		assert.ok(result);
+		assert.equal(tiptapToRawText(result), "开头。\n\n替换后。\n\n结尾。");
+	});
+
+	test("replaceParagraphsInTipTapDoc returns null when originalText not found", () => {
+		const doc = tiptapDoc("开头。\n\n结尾。");
+		const result = replaceParagraphsInTipTapDoc(doc, "不存在。", "替换。");
+		assert.equal(result, null);
+	});
+
+	test("replaceParagraphsInTipTapDoc preserves bold marks outside replaced region", () => {
+		const doc = JSON.stringify({
+			type: "doc",
+			content: [
+				{
+					type: "paragraph",
+					content: [{ type: "text", text: "保持", marks: [{ type: "bold" }] }],
+				},
+				{ type: "paragraph", content: [{ type: "text", text: "替换我" }] },
+			],
+		});
+		const result = replaceParagraphsInTipTapDoc(doc, "替换我", "新内容");
+		assert.ok(result);
+		const parsed = JSON.parse(result);
+		assert.deepEqual(parsed.content[0].content[0].marks, [{ type: "bold" }]);
+		assert.equal(tiptapToRawText(result), "保持\n\n新内容");
 	});
 });

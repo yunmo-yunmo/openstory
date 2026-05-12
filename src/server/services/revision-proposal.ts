@@ -6,6 +6,7 @@ import {
 	countWords,
 	plainTextToTipTap,
 	tiptapToPlainText,
+	tiptapToRawText,
 } from "./tiptap-converter";
 
 export const proposalStatusSchema = z.enum([
@@ -80,7 +81,11 @@ type RevisionDb = {
 
 export type RevisionResult<T> =
 	| ({ ok: true } & T)
-	| { ok: false; code: "NOT_FOUND" | "BAD_REQUEST" | "CONFLICT"; message: string };
+	| {
+			ok: false;
+			code: "NOT_FOUND" | "BAD_REQUEST" | "CONFLICT";
+			message: string;
+	  };
 
 const EDIT_INTENT_PATTERNS = [
 	"续写",
@@ -98,9 +103,7 @@ const EDIT_INTENT_PATTERNS = [
 
 export function hasRevisionEditIntent(message: string) {
 	const normalized = message.toLowerCase();
-	return EDIT_INTENT_PATTERNS.some((pattern) =>
-		normalized.includes(pattern),
-	);
+	return EDIT_INTENT_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
 export function hashChapterContent(content: string) {
@@ -108,8 +111,7 @@ export function hashChapterContent(content: string) {
 }
 
 function cjkCount(text: string) {
-	return Array.from(text).filter((char) => /\p{Script=Han}/u.test(char))
-		.length;
+	return Array.from(text).filter((char) => /\p{Script=Han}/u.test(char)).length;
 }
 
 function hasCjk(text: string) {
@@ -150,7 +152,10 @@ export function validateRevisionProposalDraft(
 	if (!isSafeOriginalText(draft.originalText)) {
 		return { ok: false, message: "Replacement target is too short." };
 	}
-	const occurrences = countExactOccurrences(chapterPlainText, draft.originalText);
+	const occurrences = countExactOccurrences(
+		chapterPlainText,
+		draft.originalText,
+	);
 	if (occurrences !== 1) {
 		return { ok: false, message: "Replacement target is not unique." };
 	}
@@ -163,6 +168,99 @@ function appendText(currentPlainText: string, replacementText: string) {
 	const replacement = replacementText.trimStart();
 	if (!current) return replacement;
 	return `${current}\n\n${replacement}`;
+}
+
+interface TipTapDoc {
+	type: "doc";
+	content: TipTapParagraph[];
+}
+
+interface TipTapParagraph {
+	type: "paragraph";
+	content: TipTapNode[];
+}
+
+interface TipTapNode {
+	type: string;
+	text?: string;
+	marks?: Array<{ type: string }>;
+	content?: TipTapNode[];
+}
+
+export function appendToTipTapDoc(
+	docJson: string,
+	replacementText: string,
+): string {
+	const doc: TipTapDoc = JSON.parse(docJson);
+	const newParagraphs = replacementText
+		.split(/\n{2,}/)
+		.filter(Boolean)
+		.map((text) => ({
+			type: "paragraph" as const,
+			content: [{ type: "text" as const, text }],
+		}));
+
+	if (doc.content.length === 0) {
+		return JSON.stringify({ type: "doc", content: newParagraphs });
+	}
+
+	const lastParagraph = doc.content[doc.content.length - 1];
+	const lastText =
+		lastParagraph?.content.map((n) => n.text ?? "").join("") ?? "";
+	if (!lastText.trim()) {
+		doc.content.pop();
+	}
+
+	return JSON.stringify({
+		type: "doc",
+		content: [...doc.content, ...newParagraphs],
+	});
+}
+
+export function replaceParagraphsInTipTapDoc(
+	docJson: string,
+	originalText: string,
+	replacementText: string,
+): string | null {
+	const doc: TipTapDoc = JSON.parse(docJson);
+	const rawText = tiptapToRawText(docJson);
+
+	const matchIndex = rawText.indexOf(originalText);
+	if (matchIndex === -1) return null;
+
+	// Build a map of paragraph index -> char range in raw text
+	let charOffset = 0;
+	const paragraphRanges: Array<{ start: number; end: number }> = [];
+	for (let i = 0; i < doc.content.length; i++) {
+		const paraText =
+			doc.content[i]?.content.map((n) => n.text ?? "").join("") ?? "";
+		const start = charOffset;
+		const end = charOffset + paraText.length;
+		paragraphRanges.push({ start, end });
+		charOffset = end + (i < doc.content.length - 1 ? 2 : 0);
+	}
+
+	const matchEnd = matchIndex + originalText.length;
+	const startParaIdx = paragraphRanges.findIndex((r) => r.end > matchIndex);
+	const endParaIdx = paragraphRanges.findIndex((r) => r.end >= matchEnd);
+
+	if (startParaIdx === -1 || endParaIdx === -1) return null;
+
+	const newParagraphs = replacementText
+		.split(/\n{2,}/)
+		.filter(Boolean)
+		.map((text) => ({
+			type: "paragraph" as const,
+			content: [{ type: "text" as const, text }],
+		}));
+
+	const newContent = [
+		...doc.content.slice(0, startParaIdx),
+		...newParagraphs,
+		...doc.content.slice(endParaIdx + 1),
+	];
+
+	return JSON.stringify({ type: "doc", content: newContent });
 }
 
 function replaceText(
