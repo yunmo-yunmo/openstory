@@ -10,6 +10,8 @@ import {
 import { api } from "~/trpc/react";
 import type { DiffProposal } from "./extensions/inline-diff";
 import { createInlineDiffExtension } from "./extensions/inline-diff";
+import type { SelectionData } from "./extensions/selection-trigger";
+import { createSelectionTriggerExtension } from "./extensions/selection-trigger";
 import { InlineDiffToolbar } from "./inline-diff-toolbar";
 
 function statusBadge(status: string) {
@@ -40,6 +42,7 @@ export function ChapterEditorArea({
 	onRejectProposal,
 	isAcceptingProposal,
 	isRejectingProposal,
+	onSelectionChange,
 }: {
 	projectId: string;
 	chapterId: string | null;
@@ -48,6 +51,10 @@ export function ChapterEditorArea({
 	onRejectProposal?: (id: string) => void;
 	isAcceptingProposal?: boolean;
 	isRejectingProposal?: boolean;
+	onSelectionChange?: (
+		data: SelectionData | null,
+		position?: { top: number; left: number },
+	) => void;
 }) {
 	if (!chapterId) {
 		return (
@@ -109,6 +116,7 @@ function ChapterEditorAreaInner({
 	onRejectProposal,
 	isAcceptingProposal,
 	isRejectingProposal,
+	onSelectionChange,
 }: {
 	projectId: string;
 	chapterId: string;
@@ -117,6 +125,10 @@ function ChapterEditorAreaInner({
 	onRejectProposal?: (id: string) => void;
 	isAcceptingProposal?: boolean;
 	isRejectingProposal?: boolean;
+	onSelectionChange?: (
+		data: SelectionData | null,
+		position?: { top: number; left: number },
+	) => void;
 }) {
 	const utils = api.useUtils();
 
@@ -171,6 +183,24 @@ function ChapterEditorAreaInner({
 		[doSave],
 	);
 
+	const selectionTrigger = createSelectionTriggerExtension((data) => {
+		if (onSelectionChange) {
+			if (data) {
+				// Get selection coordinates from editor view
+				const view = editor?.view;
+				if (view) {
+					const { from } = view.state.selection;
+					const coords = view.coordsAtPos(from);
+					onSelectionChange(data, { top: coords.top, left: coords.left });
+				} else {
+					onSelectionChange(data);
+				}
+			} else {
+				onSelectionChange(null);
+			}
+		}
+	});
+
 	const inlineDiffExt = createInlineDiffExtension().configure({
 		proposals: proposals ?? [],
 		onAccept: onAcceptProposal ?? (() => {}),
@@ -178,7 +208,7 @@ function ChapterEditorAreaInner({
 	});
 
 	const editor = useEditor({
-		extensions: [StarterKit, inlineDiffExt],
+		extensions: [StarterKit, selectionTrigger, inlineDiffExt],
 		content: chapterData?.content ? JSON.parse(chapterData.content) : "",
 		onUpdate: ({ editor: updatedEditor }) => {
 			const plainText = tiptapToPlainText(

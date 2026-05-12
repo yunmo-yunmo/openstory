@@ -5,13 +5,13 @@ import { assembleContext } from "~/server/ai/context-manager";
 import { createToolRegistry } from "~/server/ai/tools/registry";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createLLMClient } from "~/server/llm/client";
-import { tiptapToPlainText } from "~/server/services/tiptap-converter";
 import {
-	hasRevisionEditIntent,
 	hashChapterContent,
+	hasRevisionEditIntent,
 	revisionProposalDraftSchema,
 	validateRevisionProposalDraft,
 } from "~/server/services/revision-proposal";
+import { tiptapToPlainText } from "~/server/services/tiptap-converter";
 
 export const sessionRouter = createTRPCRouter({
 	create: protectedProcedure
@@ -86,7 +86,26 @@ export const sessionRouter = createTRPCRouter({
 		}),
 
 	send: protectedProcedure
-		.input(z.object({ id: z.string(), message: z.string().min(1) }))
+		.input(
+			z.object({
+				id: z.string(),
+				message: z.string().min(1),
+				selectionContext: z
+					.object({
+						selectedText: z.string(),
+						beforeContext: z.string(),
+						afterContext: z.string(),
+						operation: z.enum([
+							"rewrite",
+							"polish",
+							"expand",
+							"shorten",
+							"continue",
+						]),
+					})
+					.optional(),
+			}),
+		)
 		.mutation(async ({ ctx, input }) => {
 			const session = await ctx.db.aISession.findFirst({
 				where: { id: input.id, project: { userId: ctx.session.user.id } },
@@ -103,12 +122,27 @@ export const sessionRouter = createTRPCRouter({
 			} catch {
 				messages = [];
 			}
-			const userMessage = { role: "user" as const, content: input.message };
+			let userContent = input.message;
+			if (input.selectionContext) {
+				const sel = input.selectionContext;
+				const opLabels: Record<string, string> = {
+					rewrite: "改写",
+					polish: "润色",
+					expand: "扩写",
+					shorten: "缩写",
+					continue: "续写",
+				};
+				userContent = `${opLabels[sel.operation]}${sel.operation === "continue" ? "" : "选中的文字"}：${sel.selectedText}`;
+			}
+			const userMessage = { role: "user" as const, content: userContent };
 
 			// --- Revision proposal path ---
 			// Attempt structured proposal generation when the user message contains
 			// edit-intent keywords and the session is bound to a chapter.
-			if (hasRevisionEditIntent(input.message) && session.chapterId) {
+			if (
+				(hasRevisionEditIntent(input.message) || input.selectionContext) &&
+				session.chapterId
+			) {
 				const chapter = await ctx.db.chapter.findFirst({
 					where: {
 						id: session.chapterId,
@@ -189,27 +223,22 @@ Rules:
 							);
 
 							if (validation.ok) {
-								const proposal =
-									await ctx.db.chapterRevisionProposal.create({
-										data: {
-											projectId: session.projectId,
-											chapterId: session.chapterId,
-											sessionId: session.id,
-											status: "pending",
-											operation: draft.operation,
-											instruction: draft.instruction,
-											targetHint:
-												draft.operation === "replace"
-													? draft.targetHint
-													: null,
-											originalText:
-												draft.operation === "replace"
-													? draft.originalText
-													: null,
-											replacementText: draft.replacementText,
-											baseContentHash,
-										},
-									});
+								const proposal = await ctx.db.chapterRevisionProposal.create({
+									data: {
+										projectId: session.projectId,
+										chapterId: session.chapterId,
+										sessionId: session.id,
+										status: "pending",
+										operation: draft.operation,
+										instruction: draft.instruction,
+										targetHint:
+											draft.operation === "replace" ? draft.targetHint : null,
+										originalText:
+											draft.operation === "replace" ? draft.originalText : null,
+										replacementText: draft.replacementText,
+										baseContentHash,
+									},
+								});
 
 								const proposalSummary =
 									draft.operation === "append"
@@ -223,63 +252,57 @@ Rules:
 								};
 
 								// Atomically merge messages
-								const updated =
-									await ctx.db.$transaction(async (tx) => {
-										const current = await tx.aISession.findFirst({
-											where: {
-												id: input.id,
-												project: {
-													userId: ctx.session.user.id,
-												},
+								const updated = await ctx.db.$transaction(async (tx) => {
+									const current = await tx.aISession.findFirst({
+										where: {
+											id: input.id,
+											project: {
+												userId: ctx.session.user.id,
 											},
+										},
+									});
+									if (!current)
+										throw new TRPCError({
+											code: "NOT_FOUND",
 										});
-										if (!current)
-											throw new TRPCError({
-												code: "NOT_FOUND",
-											});
 
-										let currentMessages: {
+									let currentMessages: {
+										role: string;
+										content: string;
+									}[];
+									try {
+										currentMessages = JSON.parse(current.messages);
+									} catch {
+										currentMessages = [];
+									}
+									currentMessages.push(
+										userMessage as {
 											role: string;
 											content: string;
-										}[];
-										try {
-											currentMessages = JSON.parse(
-												current.messages,
-											);
-										} catch {
-											currentMessages = [];
-										}
-										currentMessages.push(
-											userMessage as {
-												role: string;
-												content: string;
-											},
-										);
-										currentMessages.push(
-											assistantMessage as {
-												role: string;
-												content: string;
-											},
-										);
+										},
+									);
+									currentMessages.push(
+										assistantMessage as {
+											role: string;
+											content: string;
+										},
+									);
 
-										const data: {
-											messages: string;
-											title?: string;
-										} = {
-											messages: JSON.stringify(
-												currentMessages,
-											),
-										};
-										if (!current.title) {
-											data.title =
-												input.message.slice(0, 100);
-										}
+									const data: {
+										messages: string;
+										title?: string;
+									} = {
+										messages: JSON.stringify(currentMessages),
+									};
+									if (!current.title) {
+										data.title = input.message.slice(0, 100);
+									}
 
-										return tx.aISession.update({
-											where: { id: input.id },
-											data,
-										});
+									return tx.aISession.update({
+										where: { id: input.id },
+										data,
 									});
+								});
 
 								return {
 									message: {
@@ -339,7 +362,11 @@ Rules:
 					llmClient,
 				});
 
-				const allMessages = [...contextMessages, ...messages, userMessage] as ModelMessage[];
+				const allMessages = [
+					...contextMessages,
+					...messages,
+					userMessage,
+				] as ModelMessage[];
 
 				const result = await llmClient.generate({
 					task: "chat",

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import type { DiffProposal } from "./extensions/inline-diff";
+import type { SelectionData } from "./extensions/selection-trigger";
+import type { AIOperation } from "./selection-menu";
 
 interface SessionMessage {
 	role: string;
@@ -49,6 +51,11 @@ export function ChatPanel({
 	onSessionChange: (id: string | null) => void;
 	onOpenModelServices?: () => void;
 	onProposalsChange?: (proposals: DiffProposal[]) => void;
+	pendingSelection?: {
+		operation: AIOperation;
+		selection: SelectionData;
+	} | null;
+	onSelectionConsumed?: () => void;
 }) {
 	const utils = api.useUtils();
 
@@ -168,6 +175,8 @@ function ChatPanelInner({
 	onSessionChange,
 	onOpenModelServices,
 	onProposalsChange,
+	pendingSelection,
+	onSelectionConsumed,
 }: {
 	projectId: string;
 	activeSessionId: string;
@@ -175,6 +184,11 @@ function ChatPanelInner({
 	onSessionChange: (id: string | null) => void;
 	onOpenModelServices?: () => void;
 	onProposalsChange?: (proposals: DiffProposal[]) => void;
+	pendingSelection?: {
+		operation: AIOperation;
+		selection: SelectionData;
+	} | null;
+	onSelectionConsumed?: () => void;
 }) {
 	const [input, setInput] = useState("");
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -273,6 +287,40 @@ function ChatPanelInner({
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
+
+	// Auto-send when pendingSelection arrives (from editor selection menu)
+	useEffect(() => {
+		if (!pendingSelection || !hasUsableConfig || sendMutation.isPending) return;
+
+		if (activeSessionId) {
+			const opLabels = {
+				rewrite: "改写",
+				polish: "润色",
+				expand: "扩写",
+				shorten: "缩写",
+				continue: "续写",
+			};
+			const message =
+				opLabels[pendingSelection.operation] +
+				(pendingSelection.operation === "continue" ? "" : "选中的文字") +
+				"：" +
+				pendingSelection.selection.text.slice(0, 50) +
+				"...";
+			sendMutation.mutate({
+				id: activeSessionId,
+				message,
+				selectionContext: {
+					selectedText: pendingSelection.selection.text,
+					beforeContext: pendingSelection.selection.beforeContext,
+					afterContext: pendingSelection.selection.afterContext,
+					operation: pendingSelection.operation,
+				},
+			});
+			onSelectionConsumed?.();
+		} else if (chapterId) {
+			onSelectionConsumed?.();
+		}
+	}, [pendingSelection, activeSessionId, hasUsableConfig]);
 
 	// Auto-resize textarea
 	const adjustTextareaHeight = useCallback(() => {
