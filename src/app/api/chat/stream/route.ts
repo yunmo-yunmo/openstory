@@ -45,9 +45,7 @@ export async function POST(request: Request) {
 				? (messages[messages.length - 1] as ModelMessage)
 				: null;
 		const userMessage =
-			userContent &&
-			typeof userContent === "object" &&
-			"content" in userContent
+			userContent && typeof userContent === "object" && "content" in userContent
 				? { role: "user", content: String(userContent.content) }
 				: null;
 

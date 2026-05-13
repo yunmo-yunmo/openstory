@@ -1,8 +1,8 @@
 "use client";
 
+import type { SelectionData } from "./extensions/selection-trigger";
 import type { AIOperation } from "./story-bible-types";
 import { AI_OPERATIONS } from "./story-bible-types";
-import type { SelectionData } from "./extensions/selection-trigger";
 
 export type { AIOperation };
 

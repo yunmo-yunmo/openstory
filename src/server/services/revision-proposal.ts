@@ -5,9 +5,9 @@ import { z } from "zod";
 import {
 	countWords,
 	plainTextToTipTap,
+	type TipTapNode,
 	tiptapToPlainText,
 	tiptapToRawText,
-	type TipTapNode,
 } from "./tiptap-converter";
 
 export const proposalStatusSchema = z.enum([

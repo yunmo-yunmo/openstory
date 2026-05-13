@@ -102,6 +102,7 @@ export function ChapterEditorArea({
 			isRejectingProposal={isRejectingProposal}
 			onAcceptProposal={onAcceptProposal}
 			onRejectProposal={onRejectProposal}
+			onSelectionChange={onSelectionChange}
 			projectId={projectId}
 			proposals={proposals}
 		/>
@@ -219,6 +220,7 @@ function ChapterEditorAreaInner({
 	});
 
 	// Force ProseMirror to re-compute decorations when proposals change
+	// biome-ignore lint/correctness/useExhaustiveDependencies: proposals feeds a ref - removing it breaks reactivity
 	useEffect(() => {
 		if (editor) {
 			editor.view.dispatch(

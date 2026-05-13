@@ -164,6 +164,7 @@ export function ChatPanel({
 			activeSessionId={activeSessionId}
 			chapterId={chapterId}
 			onOpenModelServices={onOpenModelServices}
+			onProposalsChange={onProposalsChange}
 			onSessionChange={onSessionChange}
 			projectId={projectId}
 		/>

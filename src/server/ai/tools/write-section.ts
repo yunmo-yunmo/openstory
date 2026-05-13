@@ -1,8 +1,8 @@
 import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
-import { plainTextToTipTap } from "../../services/tiptap-converter";
 import type { TipTapDoc, TipTapNode } from "../../services/tiptap-converter";
+import { plainTextToTipTap } from "../../services/tiptap-converter";
 import type { ToolContext } from "./data-access";
 import {
 	createSnapshot,

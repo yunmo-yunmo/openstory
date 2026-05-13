@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { ModelMessage } from "ai";
 import { z } from "zod";
+import { AI_OPERATION_LABELS } from "~/app/_components/story-bible-types";
 import { assembleContext } from "~/server/ai/context-manager";
 import { createToolRegistry } from "~/server/ai/tools/registry";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -12,7 +13,6 @@ import {
 	validateRevisionProposalDraft,
 } from "~/server/services/revision-proposal";
 import { tiptapToPlainText } from "~/server/services/tiptap-converter";
-import { AI_OPERATION_LABELS } from "~/app/_components/story-bible-types";
 
 export const sessionRouter = createTRPCRouter({
 	create: protectedProcedure
