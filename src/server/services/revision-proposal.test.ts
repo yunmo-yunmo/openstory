@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { hasRevisionEditIntent } from "../../app/_components/story-bible-types";
 import {
 	acceptRevisionProposal,
 	appendToTipTapDoc,
 	hashChapterContent,
-	hasRevisionEditIntent,
 	replaceParagraphsInTipTapDoc,
 	validateRevisionProposalDraft,
 } from "./revision-proposal";

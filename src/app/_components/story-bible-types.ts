@@ -31,3 +31,22 @@ export const workspaceModes: Array<{
 	{ id: "outline", label: "大纲" },
 	{ id: "worldNotes", label: "世界" },
 ];
+
+const EDIT_INTENT_PATTERNS = [
+	"续写",
+	"改写",
+	"重写",
+	"润色",
+	"扩写",
+	"缩写",
+	"continue",
+	"rewrite",
+	"polish",
+	"expand",
+	"shorten",
+] as const;
+
+export function hasRevisionEditIntent(message: string) {
+	const normalized = message.toLowerCase();
+	return EDIT_INTENT_PATTERNS.some((pattern) => normalized.includes(pattern));
+}

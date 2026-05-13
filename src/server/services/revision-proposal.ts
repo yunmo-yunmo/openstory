@@ -88,25 +88,6 @@ export type RevisionResult<T> =
 			message: string;
 	  };
 
-const EDIT_INTENT_PATTERNS = [
-	"续写",
-	"改写",
-	"重写",
-	"润色",
-	"扩写",
-	"缩写",
-	"continue",
-	"rewrite",
-	"polish",
-	"expand",
-	"shorten",
-];
-
-export function hasRevisionEditIntent(message: string) {
-	const normalized = message.toLowerCase();
-	return EDIT_INTENT_PATTERNS.some((pattern) => normalized.includes(pattern));
-}
-
 export function hashChapterContent(content: string) {
 	return createHash("sha256").update(content).digest("hex");
 }

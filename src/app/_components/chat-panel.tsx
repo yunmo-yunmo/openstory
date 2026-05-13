@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { hasRevisionEditIntent } from "~/server/services/revision-proposal";
 import { api } from "~/trpc/react";
 import type { DiffProposal } from "./extensions/inline-diff";
 import type { SelectionData } from "./extensions/selection-trigger";
 import type { AIOperation } from "./selection-menu";
-import { AI_OPERATION_LABELS } from "./story-bible-types";
+import {
+	AI_OPERATION_LABELS,
+	hasRevisionEditIntent,
+} from "./story-bible-types";
 
 interface SessionMessage {
 	role: string;
