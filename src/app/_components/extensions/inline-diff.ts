@@ -1,7 +1,11 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import { charRangeToPosition, docEndPosition } from "./text-position-mapper";
+import {
+	charRangeToPosition,
+	docEndPosition,
+	docToRawText,
+} from "./text-position-mapper";
 
 export interface DiffProposal {
 	id: string;

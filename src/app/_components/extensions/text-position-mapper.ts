@@ -6,11 +6,35 @@ export interface TextPosition {
 }
 
 /**
- * Map a plain-text character range [startOffset, endOffset) to
+ * Extract raw text from a ProseMirror doc with paragraph separators,
+ * matching the server-side `tiptapToRawText` output so char offsets align.
+ * Unlike `doc.textContent` (which concatenates without separators), this
+ * inserts `\n\n` between top-level blocks — matching how revision proposals
+ * are generated.
+ */
+export function docToRawText(doc: ProseMirrorNode): string {
+	const blocks: string[] = [];
+	doc.forEach((block) => {
+		let text = "";
+		block.forEach((node) => {
+			if (node.isText) {
+				text += node.text ?? "";
+			} else if (node.type.name === "hardBreak") {
+				text += "\n";
+			}
+		});
+		blocks.push(text);
+	});
+	return blocks.join("\n\n");
+}
+
+/**
+ * Map a raw-text character range [startOffset, endOffset) to
  * ProseMirror document positions { from, to }.
  *
- * Walks all text nodes in the document, accumulating character offsets.
- * Handles inline marks (bold/italic) that split text nodes.
+ * Uses the same character-counting scheme as `docToRawText` —
+ * inserting `\n\n` between top-level blocks — so offsets align
+ * with raw-text match positions.
  */
 export function charRangeToPosition(
 	doc: ProseMirrorNode,
@@ -21,25 +45,29 @@ export function charRangeToPosition(
 	let from: number | null = null;
 	let to: number | null = null;
 
-	doc.descendants((node, pos) => {
-		if (!node.isText) return true;
-		const text = node.text ?? "";
-		const nodeStart = charIndex;
-		const nodeEnd = charIndex + text.length;
+	doc.forEach((block, blockOffset) => {
+		block.forEach((node, relOffset) => {
+			if (from !== null && to !== null) return;
+			if (!node.isText) return;
 
-		if (from === null && nodeEnd > startOffset) {
-			const offsetInNode = startOffset - nodeStart;
-			from = pos + Math.max(0, offsetInNode);
-		}
+			const text = node.text ?? "";
+			const nodeStart = charIndex;
+			const nodeEnd = charIndex + text.length;
+			const absPos = blockOffset + 1 + relOffset;
 
-		if (to === null && nodeEnd >= endOffset) {
-			const offsetInNode = endOffset - nodeStart;
-			to = pos + Math.min(text.length, offsetInNode);
-			return false;
-		}
+			if (from === null && nodeEnd > startOffset) {
+				const offsetInNode = startOffset - nodeStart;
+				from = absPos + Math.max(0, offsetInNode);
+			}
 
-		charIndex = nodeEnd;
-		return true;
+			if (to === null && nodeEnd >= endOffset) {
+				const offsetInNode = endOffset - nodeStart;
+				to = absPos + Math.min(text.length, offsetInNode);
+			}
+
+			charIndex = nodeEnd;
+		});
+		charIndex += 2; // paragraph separator (\n\n)
 	});
 
 	if (from === null || to === null) return null;
