@@ -128,22 +128,26 @@ export function OutlinePanel({ projectId }: { projectId: string }) {
 	return (
 		<section className="min-w-0 flex-1 overflow-y-auto bg-study-900 px-6 py-6 lg:px-8">
 			<PanelHeader
-				description="树状结构、章节关联与写作状态。"
-				title="大纲"
-				volume="Volume IX · Outline Index"
 				action={
 					<Button onClick={startCreate} size="sm" type="button">
 						<Plus aria-hidden="true" className="h-4 w-4" />
 						新建节点
 					</Button>
 				}
+				description="树状结构、章节关联与写作状态。"
+				title="大纲"
+				volume="Volume IX · Outline Index"
 			/>
 
 			<div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
 				<div className="space-y-2">
 					{outlines.length === 0 && (
 						<Card className="p-4">
-							<button className="w-full text-center text-ink-dim text-sm" onClick={startCreate} type="button">
+							<button
+								className="w-full text-center text-ink-dim text-sm"
+								onClick={startCreate}
+								type="button"
+							>
 								创建第一个大纲节点
 							</button>
 						</Card>
@@ -159,11 +163,11 @@ export function OutlinePanel({ projectId }: { projectId: string }) {
 							onClick={() => startEdit(outline)}
 							type="button"
 						>
-							<p className="truncate text-sm text-ink">
+							<p className="truncate text-ink text-sm">
 								{outline.parentId ? "  " : ""}
 								{outline.title}
 							</p>
-							<p className="mt-1 text-xs text-ink-dim">
+							<p className="mt-1 text-ink-dim text-xs">
 								{outline.status} · {outline.order}
 							</p>
 						</button>
@@ -173,10 +177,10 @@ export function OutlinePanel({ projectId }: { projectId: string }) {
 				<Card className="p-5">
 					<div className="mb-5 flex items-center justify-between gap-3">
 						<div>
-							<p className="font-label text-[10px] uppercase tracking-[0.28em] text-ink-muted">
+							<p className="font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
 								章节脉络
 							</p>
-							<h3 className="mt-1 font-display text-xl text-ink">
+							<h3 className="mt-1 font-display text-ink text-xl">
 								{selected ? "编辑大纲" : "新建大纲"}
 							</h3>
 						</div>
@@ -292,7 +296,11 @@ export function OutlinePanel({ projectId }: { projectId: string }) {
 						</Field>
 					</div>
 
-					{error && <p className="mt-4 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">{error}</p>}
+					{error && (
+						<p className="mt-4 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">
+							{error}
+						</p>
+					)}
 
 					<div className="mt-5 flex flex-wrap gap-2">
 						<Button
@@ -304,7 +312,13 @@ export function OutlinePanel({ projectId }: { projectId: string }) {
 							<Save aria-hidden="true" className="h-4 w-4" />
 							{pending ? "保存中..." : "保存"}
 						</Button>
-						<Button disabled={pending} onClick={startCreate} size="sm" type="button" variant="quiet">
+						<Button
+							disabled={pending}
+							onClick={startCreate}
+							size="sm"
+							type="button"
+							variant="quiet"
+						>
 							取消
 						</Button>
 						{selected && (

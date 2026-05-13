@@ -138,22 +138,26 @@ export function WorldNotesPanel({ projectId }: { projectId: string }) {
 	return (
 		<section className="min-w-0 flex-1 overflow-y-auto bg-study-900 px-6 py-6 lg:px-8">
 			<PanelHeader
-				description="世界观、地名、历史与风俗的索引。"
-				title="世界设定"
-				volume="Volume X · World Notes"
 				action={
 					<Button onClick={startCreate} size="sm" type="button">
 						<Plus aria-hidden="true" className="h-4 w-4" />
 						新建设定
 					</Button>
 				}
+				description="世界观、地名、历史与风俗的索引。"
+				title="世界设定"
+				volume="Volume X · World Notes"
 			/>
 
 			<div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
 				<div className="space-y-2">
 					{notes.length === 0 && (
 						<Card className="p-4">
-							<button className="w-full text-center text-ink-dim text-sm" onClick={startCreate} type="button">
+							<button
+								className="w-full text-center text-ink-dim text-sm"
+								onClick={startCreate}
+								type="button"
+							>
 								创建第一条世界设定
 							</button>
 						</Card>
@@ -169,8 +173,8 @@ export function WorldNotesPanel({ projectId }: { projectId: string }) {
 							onClick={() => startEdit(note)}
 							type="button"
 						>
-							<p className="truncate text-sm text-ink">{note.title}</p>
-							<p className="mt-1 text-xs text-ink-dim">
+							<p className="truncate text-ink text-sm">{note.title}</p>
+							<p className="mt-1 text-ink-dim text-xs">
 								{note.category} · {note.order}
 							</p>
 						</button>
@@ -180,10 +184,10 @@ export function WorldNotesPanel({ projectId }: { projectId: string }) {
 				<Card className="p-5">
 					<div className="mb-5 flex items-center justify-between gap-3">
 						<div>
-							<p className="font-label text-[10px] uppercase tracking-[0.28em] text-ink-muted">
+							<p className="font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
 								资料卷册
 							</p>
-							<h3 className="mt-1 font-display text-xl text-ink">
+							<h3 className="mt-1 font-display text-ink text-xl">
 								{selected ? "编辑世界设定" : "新建世界设定"}
 							</h3>
 						</div>
@@ -264,7 +268,10 @@ export function WorldNotesPanel({ projectId }: { projectId: string }) {
 								disabled={pending}
 								id="world-tags"
 								onChange={(event) =>
-									setForm((current) => ({ ...current, tags: event.target.value }))
+									setForm((current) => ({
+										...current,
+										tags: event.target.value,
+									}))
 								}
 								placeholder="标签，用逗号分隔"
 								value={form.tags}
@@ -272,7 +279,11 @@ export function WorldNotesPanel({ projectId }: { projectId: string }) {
 						</Field>
 					</div>
 
-					{error && <p className="mt-4 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">{error}</p>}
+					{error && (
+						<p className="mt-4 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">
+							{error}
+						</p>
+					)}
 
 					<div className="mt-5 flex flex-wrap gap-2">
 						<Button
@@ -284,7 +295,13 @@ export function WorldNotesPanel({ projectId }: { projectId: string }) {
 							<Save aria-hidden="true" className="h-4 w-4" />
 							{pending ? "保存中..." : "保存"}
 						</Button>
-						<Button disabled={pending} onClick={startCreate} size="sm" type="button" variant="quiet">
+						<Button
+							disabled={pending}
+							onClick={startCreate}
+							size="sm"
+							type="button"
+							variant="quiet"
+						>
 							取消
 						</Button>
 						{selected && (

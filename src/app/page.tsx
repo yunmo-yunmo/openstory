@@ -1,3 +1,4 @@
+import { BookOpen, LogIn, ScrollText } from "lucide-react";
 import { Suspense } from "react";
 import { ProjectDashboard } from "~/app/_components/project-dashboard";
 import { Button } from "~/app/_components/ui/button";
@@ -6,7 +7,6 @@ import { WorkspaceErrorBoundary } from "~/app/_components/workspace-error-bounda
 import { env } from "~/env";
 import { auth, signIn } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
-import { BookOpen, LogIn, ScrollText } from "lucide-react";
 
 export default async function Home() {
 	const session = await auth();
@@ -47,7 +47,7 @@ export default async function Home() {
 				<div className="flex flex-col items-center gap-4">
 					<VolumeLabel>Volume I · The Writing Study</VolumeLabel>
 					<h1 className="font-display text-6xl text-ink leading-none tracking-wide sm:text-7xl lg:text-8xl">
-						Open<span className="text-amber engraved">Story</span>
+						Open<span className="engraved text-amber">Story</span>
 					</h1>
 					<OrnateDivider className="w-full max-w-md" />
 					<p className="font-display text-2xl text-ink-muted italic tracking-wide">

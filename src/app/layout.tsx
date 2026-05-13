@@ -1,11 +1,7 @@
 import "~/styles/globals.css";
 
 import type { Metadata } from "next";
-import {
-	Cormorant_Garamond,
-	Crimson_Pro,
-	Geist_Mono,
-} from "next/font/google";
+import { Cormorant_Garamond, Crimson_Pro, Geist_Mono } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 

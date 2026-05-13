@@ -1,7 +1,7 @@
 "use client";
 
-import { Component } from "react";
 import { RefreshCcw } from "lucide-react";
+import { Component } from "react";
 import { Button } from "./ui/button";
 import { EmptyState } from "./ui/empty-state";
 

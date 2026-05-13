@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle2, LoaderCircle, Plus, RotateCcw, Shield, Trash2, Wand2 } from "lucide-react";
+import {
+	CheckCircle2,
+	LoaderCircle,
+	Plus,
+	RotateCcw,
+	Shield,
+	Trash2,
+	Wand2,
+} from "lucide-react";
+import { useState } from "react";
 import { api } from "~/trpc/react";
+import { getConfigCardMutationState } from "./model-service-dialog-state";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { Field, Label, Select, TextInput } from "./ui/form";
 import { EmptyState } from "./ui/empty-state";
+import { Field, Label, Select, TextInput } from "./ui/form";
 import { ModalShell } from "./ui/modal";
 
 interface ModelServiceDialogProps {
@@ -32,16 +41,6 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 	const [apiKey, setApiKey] = useState("");
 	const [baseUrl, setBaseUrl] = useState("");
 	const [model, setModel] = useState("");
-
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [onClose]);
 
 	const invalidateList = async () => {
 		await utils.llmConfig.list.invalidate();
@@ -98,9 +97,17 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 			ariaLabel="关闭模型服务窗口"
 			className="max-w-4xl"
 			description="配置 AI 提供商并管理写作助手的 API 密钥。"
+			disableEscapeClose={createMutation.isPending}
+			disableOverlayClose={createMutation.isPending}
 			footer={
 				<div className="flex items-center justify-end">
-					<Button onClick={onClose} size="sm" variant="quiet" type="button">
+					<Button
+						disabled={createMutation.isPending}
+						onClick={onClose}
+						size="sm"
+						type="button"
+						variant="quiet"
+					>
 						关闭
 					</Button>
 				</div>
@@ -118,7 +125,13 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 							</Button>
 						}
 						description="添加一个提供商即可开始与 AI 助手对话。"
-						icon={<Shield aria-hidden="true" className="h-9 w-9" strokeWidth={1.5} />}
+						icon={
+							<Shield
+								aria-hidden="true"
+								className="h-9 w-9"
+								strokeWidth={1.5}
+							/>
+						}
 						title="暂无模型服务配置"
 						volume="Volume III · Provider Registry"
 					/>
@@ -140,12 +153,15 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 						<form className="flex flex-col gap-4" onSubmit={handleCreate}>
 							<div className="flex items-center justify-between gap-3">
 								<div>
-									<p className="mb-1 font-label text-amber text-[10px] uppercase tracking-[0.28em]">
+									<p className="mb-1 font-label text-[10px] text-amber uppercase tracking-[0.28em]">
 										Volume IV
 									</p>
-									<h3 className="font-display text-xl text-ink">新建模型服务</h3>
+									<h3 className="font-display text-ink text-xl">
+										新建模型服务
+									</h3>
 								</div>
 								<Button
+									disabled={createMutation.isPending}
 									onClick={() => setShowCreateForm(false)}
 									size="sm"
 									type="button"
@@ -155,9 +171,7 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 								</Button>
 							</div>
 
-							<Field
-								label={<Label htmlFor="config-name">名称</Label>}
-							>
+							<Field label={<Label htmlFor="config-name">名称</Label>}>
 								<TextInput
 									id="config-name"
 									onChange={(e) => setName(e.target.value)}
@@ -167,9 +181,7 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 								/>
 							</Field>
 
-							<Field
-								label={<Label htmlFor="config-provider">提供商</Label>}
-							>
+							<Field label={<Label htmlFor="config-provider">提供商</Label>}>
 								<Select
 									id="config-provider"
 									onChange={(e) =>
@@ -182,9 +194,7 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 								</Select>
 							</Field>
 
-							<Field
-								label={<Label htmlFor="config-apikey">API 密钥</Label>}
-							>
+							<Field label={<Label htmlFor="config-apikey">API 密钥</Label>}>
 								<TextInput
 									id="config-apikey"
 									onChange={(e) => setApiKey(e.target.value)}
@@ -198,7 +208,8 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 								<Field
 									label={
 										<Label htmlFor="config-baseurl">
-											接口地址 <span className="normal-case text-ink-dim">(可选)</span>
+											接口地址{" "}
+											<span className="text-ink-dim normal-case">(可选)</span>
 										</Label>
 									}
 								>
@@ -215,7 +226,8 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 							<Field
 								label={
 									<Label htmlFor="config-model">
-										默认模型 <span className="normal-case text-ink-dim">(可选)</span>
+										默认模型{" "}
+										<span className="text-ink-dim normal-case">(可选)</span>
 									</Label>
 								}
 							>
@@ -255,7 +267,10 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 								>
 									{createMutation.isPending ? (
 										<>
-											<LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
+											<LoaderCircle
+												aria-hidden="true"
+												className="h-4 w-4 animate-spin"
+											/>
 											保存中
 										</>
 									) : (
@@ -272,7 +287,12 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 
 				{!showCreateForm && (
 					<div className="flex justify-start">
-						<Button onClick={() => setShowCreateForm(true)} size="sm" variant="quiet" type="button">
+						<Button
+							onClick={() => setShowCreateForm(true)}
+							size="sm"
+							type="button"
+							variant="quiet"
+						>
 							<Plus aria-hidden="true" className="h-4 w-4" />
 							添加模型服务
 						</Button>
@@ -311,25 +331,42 @@ function ConfigCard({
 	testConnectionMutation,
 }: ConfigCardProps) {
 	const [confirmDelete, setConfirmDelete] = useState(false);
-	const isLoading =
-		fetchModelsMutation.isPending ||
-		testConnectionMutation.isPending ||
-		setActiveMutation.isPending ||
-		(deleteMutation.isPending && deleteMutation.variables?.id === config.id);
+	const {
+		isActivatingCard,
+		isDeletingCard,
+		isFetchingModelsForCard,
+		isLoading,
+		isTestingConnectionForCard,
+	} = getConfigCardMutationState({
+		configId: config.id,
+		deleteMutation,
+		fetchModelsMutation,
+		setActiveMutation,
+		testConnectionMutation,
+	});
 
 	return (
-		<Card className={config.isActive ? "border-amber/50 bg-amber/5 p-4" : "p-4"}>
+		<Card
+			className={config.isActive ? "border-amber/50 bg-amber/5 p-4" : "p-4"}
+		>
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-2">
-						<h4 className="truncate font-display text-lg text-ink">{config.name}</h4>
+						<h4 className="truncate font-display text-ink text-lg">
+							{config.name}
+						</h4>
 						{config.isActive && <Badge tone="brass">使用中</Badge>}
 					</div>
 					<div className="mt-2 flex flex-wrap items-center gap-2">
 						<Badge tone="muted">
-							{PROVIDER_LABELS[config.providerType as ProviderType] ?? config.providerType}
+							{PROVIDER_LABELS[config.providerType as ProviderType] ??
+								config.providerType}
 						</Badge>
-						{config.model && <span className="font-mono text-ink-dim text-xs">{config.model}</span>}
+						{config.model && (
+							<span className="font-mono text-ink-dim text-xs">
+								{config.model}
+							</span>
+						)}
 						{config.baseUrl && (
 							<span className="max-w-[180px] truncate font-mono text-ink-dim text-xs">
 								{config.baseUrl}
@@ -370,13 +407,13 @@ function ConfigCard({
 			<div className="mt-4 flex flex-wrap items-center gap-2 border-study-600/60 border-t pt-3">
 				{!config.isActive && (
 					<Button
-						disabled={setActiveMutation.isPending}
+						disabled={isLoading}
 						onClick={() => setActiveMutation.mutate({ id: config.id })}
 						size="sm"
 						type="button"
 						variant="secondary"
 					>
-						{setActiveMutation.isPending ? "激活中" : "激活"}
+						{isActivatingCard ? "激活中" : "激活"}
 					</Button>
 				)}
 				<Button
@@ -387,7 +424,7 @@ function ConfigCard({
 					variant="quiet"
 				>
 					<RotateCcw aria-hidden="true" className="h-4 w-4" />
-					{fetchModelsMutation.isPending ? "获取中" : "获取模型"}
+					{isFetchingModelsForCard ? "获取中" : "获取模型"}
 				</Button>
 				<Button
 					disabled={isLoading}
@@ -402,7 +439,7 @@ function ConfigCard({
 					variant="quiet"
 				>
 					<CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-					{testConnectionMutation.isPending ? "测试中" : "测试连接"}
+					{isTestingConnectionForCard ? "测试中" : "测试连接"}
 				</Button>
 
 				{!confirmDelete ? (
@@ -421,17 +458,23 @@ function ConfigCard({
 					<div className="ml-auto flex items-center gap-2">
 						<span className="text-rust text-xs">确认删除此服务？</span>
 						<Button
+							disabled={isLoading}
 							onClick={() => {
 								deleteMutation.mutate({ id: config.id });
-								setConfirmDelete(false);
 							}}
 							size="sm"
 							type="button"
 							variant="danger"
 						>
-							确认
+							{isDeletingCard ? "删除中" : "确认"}
 						</Button>
-						<Button onClick={() => setConfirmDelete(false)} size="sm" type="button" variant="quiet">
+						<Button
+							disabled={isLoading}
+							onClick={() => setConfirmDelete(false)}
+							size="sm"
+							type="button"
+							variant="quiet"
+						>
 							取消
 						</Button>
 					</div>

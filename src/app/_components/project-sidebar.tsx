@@ -10,7 +10,7 @@ import { workspaceModes } from "./story-bible-types";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { OrnateDivider, VolumeLabel } from "./ui/decorative";
+import { VolumeLabel } from "./ui/decorative";
 
 function statusDot(status: string) {
 	switch (status) {
@@ -98,7 +98,11 @@ export function ProjectSidebar({
 						<h1 className="mt-2 font-display text-2xl text-ink leading-tight">
 							{project?.title ?? "未命名"}
 						</h1>
-						{project?.genre && <Badge className="mt-3" tone="brass">{project.genre}</Badge>}
+						{project?.genre && (
+							<Badge className="mt-3" tone="brass">
+								{project.genre}
+							</Badge>
+						)}
 					</div>
 
 					<div className="mt-5 grid grid-cols-2 gap-2">
@@ -121,7 +125,7 @@ export function ProjectSidebar({
 
 				<div className="flex min-h-0 flex-1 flex-col">
 					<div className="flex items-center justify-between px-5 py-4">
-						<h2 className="font-label text-[10px] uppercase tracking-[0.28em] text-ink-muted">
+						<h2 className="font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
 							章节
 						</h2>
 						<div className="flex gap-2">
@@ -192,7 +196,9 @@ export function ProjectSidebar({
 					<div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
 						{chapters.length === 0 && !showCreateChapter && (
 							<div className="px-3 py-8 text-center">
-								<p className="text-ink-dim text-sm italic">暂无章节，开始你的故事。</p>
+								<p className="text-ink-dim text-sm italic">
+									暂无章节，开始你的故事。
+								</p>
 							</div>
 						)}
 						<div className="space-y-2">
@@ -216,7 +222,9 @@ export function ProjectSidebar({
 											{chapter.order}
 										</span>
 										<div className="min-w-0 flex-1">
-											<p className={`truncate text-sm ${isSelected ? "text-ink" : "text-ink-muted"}`}>
+											<p
+												className={`truncate text-sm ${isSelected ? "text-ink" : "text-ink-muted"}`}
+											>
 												{chapter.title || `第${chapter.order}章`}
 											</p>
 											<div className="mt-1 flex items-center gap-2">
@@ -233,10 +241,10 @@ export function ProjectSidebar({
 					</div>
 
 					<div className="border-study-600 border-t px-5 py-4">
-						<h2 className="mb-3 font-label text-[10px] uppercase tracking-[0.28em] text-ink-muted">
+						<h2 className="mb-3 font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
 							AI 对话
 						</h2>
-						<div className="max-h-[220px] overflow-y-auto space-y-2">
+						<div className="max-h-[220px] space-y-2 overflow-y-auto">
 							{sessions.length === 0 && (
 								<p className="py-4 text-center text-ink-dim text-xs italic">
 									暂无对话
@@ -258,7 +266,7 @@ export function ProjectSidebar({
 										<span className="truncate font-sans text-ink-muted text-xs">
 											{session.title ?? "未命名对话"}
 										</span>
-										<span className="font-mono text-ink-dim text-[10px]">
+										<span className="font-mono text-[10px] text-ink-dim">
 											{new Date(session.updatedAt).toLocaleDateString()}
 										</span>
 									</button>

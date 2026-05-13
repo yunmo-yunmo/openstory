@@ -1,16 +1,16 @@
 "use client";
 
+import { BookPlus, Settings2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { BookPlus, Settings2, Sparkles } from "lucide-react";
 import { api } from "~/trpc/react";
 import { CreateProjectDialog } from "./create-project-dialog";
 import { ModelServiceDialog } from "./model-service-dialog";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { EmptyState } from "./ui/empty-state";
 import { OrnateDivider, VolumeLabel } from "./ui/decorative";
+import { EmptyState } from "./ui/empty-state";
 import { PanelHeader } from "./ui/panel-header";
 
 function timeAgo(date: Date | string): string {
@@ -49,7 +49,13 @@ export function ProjectDashboard() {
 								</Button>
 							}
 							description="空白的书卷，安静的房间。创建你的第一个项目，开始编织故事。"
-							icon={<Sparkles aria-hidden="true" className="h-9 w-9" strokeWidth={1.5} />}
+							icon={
+								<Sparkles
+									aria-hidden="true"
+									className="h-9 w-9"
+									strokeWidth={1.5}
+								/>
+							}
 							title="你的书房在等候"
 							volume="Volume II · The Empty Library"
 						/>
@@ -69,7 +75,11 @@ export function ProjectDashboard() {
 				<PanelHeader
 					action={
 						<div className="flex flex-wrap items-center gap-3">
-							<Button onClick={() => setShowModelServices(true)} size="sm" variant="quiet">
+							<Button
+								onClick={() => setShowModelServices(true)}
+								size="sm"
+								variant="quiet"
+							>
 								<Settings2 aria-hidden="true" className="h-4 w-4" />
 								模型服务
 							</Button>
@@ -100,7 +110,9 @@ export function ProjectDashboard() {
 												{project.title}
 											</h3>
 										</div>
-										{project.genre && <Badge tone="brass">{project.genre}</Badge>}
+										{project.genre && (
+											<Badge tone="brass">{project.genre}</Badge>
+										)}
 									</div>
 
 									{project.description ? (

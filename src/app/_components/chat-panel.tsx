@@ -1,8 +1,15 @@
 "use client";
 
-import { MessageSquarePlus, Send, Sparkles, TriangleAlert, Wand2 } from "lucide-react";
+import {
+	MessageSquarePlus,
+	Send,
+	Sparkles,
+	TriangleAlert,
+	Wand2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
+import { buildSelectionMessage, isSendDisabled } from "./chat-panel-helpers";
 import type { DiffProposal } from "./extensions/inline-diff";
 import type { SelectionData } from "./extensions/selection-trigger";
 import type { AIOperation } from "./selection-menu";
@@ -52,6 +59,8 @@ export function ChatPanel({
 	onSessionChange,
 	onOpenModelServices,
 	onProposalsChange,
+	pendingSelection,
+	onSelectionConsumed,
 }: {
 	projectId: string;
 	chapterId: string | null;
@@ -105,14 +114,24 @@ export function ChatPanel({
 			<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-l">
 				<div className="flex flex-1 items-center justify-center px-6">
 					<div className="flex max-w-xs flex-col items-center gap-4 text-center">
-						<MessageSquarePlus aria-hidden="true" className="h-12 w-12 text-amber/70" />
+						<MessageSquarePlus
+							aria-hidden="true"
+							className="h-12 w-12 text-amber/70"
+						/>
 						<div>
-							<p className="font-display text-2xl text-ink">与 AI 写作助手开始对话</p>
+							<p className="font-display text-2xl text-ink">
+								与 AI 写作助手开始对话
+							</p>
 							<p className="mt-2 text-ink-dim text-sm leading-relaxed">
 								讨论灵感、获取反馈、寻求建议。
 							</p>
 						</div>
-						<Button disabled={createSessionMutation.isPending} onClick={handleNewChat} size="lg" type="button">
+						<Button
+							disabled={createSessionMutation.isPending}
+							onClick={handleNewChat}
+							size="lg"
+							type="button"
+						>
 							<Send aria-hidden="true" className="h-4 w-4" />
 							{createSessionMutation.isPending ? "创建中..." : "新对话"}
 						</Button>
@@ -128,7 +147,9 @@ export function ChatPanel({
 			chapterId={chapterId}
 			onOpenModelServices={onOpenModelServices}
 			onProposalsChange={onProposalsChange}
+			onSelectionConsumed={onSelectionConsumed}
 			onSessionChange={onSessionChange}
+			pendingSelection={pendingSelection}
 			projectId={projectId}
 		/>
 	);
@@ -205,21 +226,22 @@ function ChatPanelInner({
 	});
 
 	const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
+	const scrollTrigger = `${messages.length}:${sendMutation.isPending}:${streamingMessage ?? ""}`;
 
 	useEffect(() => {
+		void scrollTrigger;
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, []);
+	}, [scrollTrigger]);
 
 	useEffect(() => {
 		if (!pendingSelection || !hasUsableConfig || sendMutation.isPending) return;
 
 		if (activeSessionId) {
-			const message =
-				AI_OPERATION_LABELS[pendingSelection.operation] +
-				(pendingSelection.operation === "continue" ? "" : "选中的文字") +
-				"：" +
-				pendingSelection.selection.text.slice(0, 50) +
-				"...";
+			const message = buildSelectionMessage({
+				operationLabel: AI_OPERATION_LABELS[pendingSelection.operation],
+				operation: pendingSelection.operation,
+				selectedText: pendingSelection.selection.text,
+			});
 			sendMutation.mutate({
 				id: activeSessionId,
 				message,
@@ -338,14 +360,20 @@ function ChatPanelInner({
 		<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-l">
 			<div className="flex shrink-0 items-center justify-between gap-3 border-study-600 border-b px-5 py-4">
 				<div className="min-w-0">
-					<p className="truncate font-display text-xl text-ink">
+					<p className="truncate font-display text-ink text-xl">
 						{sessionData?.title ?? "新对话"}
 					</p>
 					<p className="font-mono text-[10px] text-ink-dim uppercase tracking-[0.2em]">
 						已关联当前章节
 					</p>
 				</div>
-				<Button aria-label="新对话" onClick={() => onSessionChange(null)} size="icon" type="button" variant="quiet">
+				<Button
+					aria-label="新对话"
+					onClick={() => onSessionChange(null)}
+					size="icon"
+					type="button"
+					variant="quiet"
+				>
 					<Send aria-hidden="true" className="h-4 w-4 rotate-45" />
 				</Button>
 			</div>
@@ -354,8 +382,11 @@ function ChatPanelInner({
 				<div className="border-amber/30 border-b bg-amber/5 px-5 py-4">
 					<div className="flex flex-col gap-3">
 						<div className="flex items-center gap-2">
-							<TriangleAlert aria-hidden="true" className="h-4 w-4 text-amber" />
-							<p className="font-label text-[10px] uppercase tracking-[0.24em] text-amber">
+							<TriangleAlert
+								aria-hidden="true"
+								className="h-4 w-4 text-amber"
+							/>
+							<p className="font-label text-[10px] text-amber uppercase tracking-[0.24em]">
 								未配置模型服务
 							</p>
 						</div>
@@ -363,7 +394,12 @@ function ChatPanelInner({
 							配置 AI 提供商后即可开始与写作助手对话。
 						</p>
 						{onOpenModelServices && (
-							<Button onClick={onOpenModelServices} size="sm" type="button" variant="secondary">
+							<Button
+								onClick={onOpenModelServices}
+								size="sm"
+								type="button"
+								variant="secondary"
+							>
 								<Wand2 aria-hidden="true" className="h-4 w-4" />
 								配置模型服务
 							</Button>
@@ -375,7 +411,9 @@ function ChatPanelInner({
 			<div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
 				{messages.length === 0 && !sendMutation.isPending && (
 					<div className="py-10 text-center">
-						<p className="text-ink-dim text-xs italic">与助手分享你的第一个想法</p>
+						<p className="text-ink-dim text-xs italic">
+							与助手分享你的第一个想法
+						</p>
 					</div>
 				)}
 
@@ -391,14 +429,26 @@ function ChatPanelInner({
 					);
 				})}
 
+				{streamingMessage !== null && (
+					<MessageBubble
+						message={{ content: streamingMessage, role: "assistant" }}
+					/>
+				)}
+
 				{sendMutation.isPending && (
 					<Card className="mb-3 border-amber/30 bg-amber/5 px-4 py-3">
 						<div className="flex items-center gap-2">
 							<span className="text-ink-muted text-sm">思考中</span>
 							<span className="flex gap-0.5 pt-0.5">
 								<span className="h-1 w-1 animate-pulse rounded-full bg-amber" />
-								<span className="h-1 w-1 animate-pulse rounded-full bg-amber" style={{ animationDelay: "0.15s" }} />
-								<span className="h-1 w-1 animate-pulse rounded-full bg-amber" style={{ animationDelay: "0.3s" }} />
+								<span
+									className="h-1 w-1 animate-pulse rounded-full bg-amber"
+									style={{ animationDelay: "0.15s" }}
+								/>
+								<span
+									className="h-1 w-1 animate-pulse rounded-full bg-amber"
+									style={{ animationDelay: "0.3s" }}
+								/>
 							</span>
 						</div>
 					</Card>
@@ -431,7 +481,12 @@ function ChatPanelInner({
 					/>
 					<Button
 						aria-label="发送消息"
-						disabled={!input.trim() || sendMutation.isPending || !hasUsableConfig}
+						disabled={isSendDisabled({
+							hasUsableConfig,
+							input,
+							isMutationPending: sendMutation.isPending,
+							isStreaming: streamingMessage !== null,
+						})}
 						onClick={handleSend}
 						size="icon"
 						type="button"
@@ -485,7 +540,11 @@ function MessageBubble({ message }: { message: SessionMessage }) {
 								viewBox="0 0 24 24"
 								xmlns="http://www.w3.org/2000/svg"
 							>
-								<path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+								<path
+									d="M9 5l7 7-7 7"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
 							</svg>
 							使用工具：{message.toolCalls?.map((tc) => tc.name).join(", ")}
 						</button>
@@ -524,7 +583,10 @@ function RevisionProposalCard({ proposal }: { proposal: ProposalType }) {
 		expired: "已过期",
 	};
 
-	const statusTone: Record<ProposalStatus, "brass" | "sage" | "danger" | "muted"> = {
+	const statusTone: Record<
+		ProposalStatus,
+		"brass" | "sage" | "danger" | "muted"
+	> = {
 		pending: "brass",
 		accepted: "sage",
 		rejected: "danger",
@@ -545,12 +607,22 @@ function RevisionProposalCard({ proposal }: { proposal: ProposalType }) {
 	return (
 		<Card className="mb-3 border-l-2 border-l-amber/60 px-3 py-3">
 			<div className="mb-2 flex items-center gap-2">
-				<Badge tone={statusTone[proposal.status]}>{operationLabel[proposal.operation]}</Badge>
+				<Badge tone={statusTone[proposal.status]}>
+					{operationLabel[proposal.operation]}
+				</Badge>
 				<Badge tone="muted">{statusLabel[proposal.status]}</Badge>
 			</div>
-			<p className="text-ink-muted text-sm leading-relaxed">{proposal.instruction}</p>
-			{preview && <p className="mt-2 font-mono text-ink-dim text-xs italic">{preview}</p>}
-			{isPending && <p className="mt-2 text-ink-dim text-xs italic">在编辑器中查看修改建议</p>}
+			<p className="text-ink-muted text-sm leading-relaxed">
+				{proposal.instruction}
+			</p>
+			{preview && (
+				<p className="mt-2 font-mono text-ink-dim text-xs italic">{preview}</p>
+			)}
+			{isPending && (
+				<p className="mt-2 text-ink-dim text-xs italic">
+					在编辑器中查看修改建议
+				</p>
+			)}
 		</Card>
 	);
 }

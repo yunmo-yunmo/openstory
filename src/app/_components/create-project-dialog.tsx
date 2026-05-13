@@ -2,7 +2,7 @@
 
 import { BookText, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "./ui/button";
 import { Field, Label, TextArea, TextInput } from "./ui/form";
@@ -40,24 +40,12 @@ export function CreateProjectDialog({ onClose }: CreateProjectDialogProps) {
 		});
 	};
 
-	useEffect(() => {
-		nameInputRef.current?.focus();
-	}, []);
-
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape" && !createProject.isPending) {
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [onClose, createProject.isPending]);
-
 	return (
 		<ModalShell
 			ariaLabel="关闭新建项目窗口"
 			description="每个故事都始于一个字。"
+			disableEscapeClose={createProject.isPending}
+			disableOverlayClose={createProject.isPending}
 			footer={
 				<div className="flex items-center justify-end gap-3">
 					<Button
@@ -103,6 +91,7 @@ export function CreateProjectDialog({ onClose }: CreateProjectDialogProps) {
 			>
 				<Field label={<Label htmlFor="project-name">名称</Label>}>
 					<TextInput
+						autoFocus
 						id="project-name"
 						onChange={(e) => setName(e.target.value)}
 						placeholder="未命名故事"

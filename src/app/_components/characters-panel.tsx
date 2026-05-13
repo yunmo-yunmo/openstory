@@ -118,22 +118,26 @@ export function CharactersPanel({ projectId }: { projectId: string }) {
 	return (
 		<section className="min-w-0 flex-1 overflow-y-auto bg-study-900 px-6 py-6 lg:px-8">
 			<PanelHeader
-				description="角色图谱与关系资料卡。"
-				title="角色"
-				volume="Volume VIII · Character Ledger"
 				action={
 					<Button onClick={startCreate} size="sm" type="button">
 						<Plus aria-hidden="true" className="h-4 w-4" />
 						新建角色
 					</Button>
 				}
+				description="角色图谱与关系资料卡。"
+				title="角色"
+				volume="Volume VIII · Character Ledger"
 			/>
 
 			<div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
 				<div className="space-y-2">
 					{characters.length === 0 && (
 						<Card className="p-4">
-							<button className="w-full text-center text-ink-dim text-sm" onClick={startCreate} type="button">
+							<button
+								className="w-full text-center text-ink-dim text-sm"
+								onClick={startCreate}
+								type="button"
+							>
 								创建第一个角色
 							</button>
 						</Card>
@@ -149,9 +153,9 @@ export function CharactersPanel({ projectId }: { projectId: string }) {
 							onClick={() => startEdit(character)}
 							type="button"
 						>
-							<p className="truncate text-sm text-ink">{character.name}</p>
+							<p className="truncate text-ink text-sm">{character.name}</p>
 							{character.description && (
-								<p className="mt-1 line-clamp-2 text-xs text-ink-dim">
+								<p className="mt-1 line-clamp-2 text-ink-dim text-xs">
 									{character.description}
 								</p>
 							)}
@@ -162,10 +166,10 @@ export function CharactersPanel({ projectId }: { projectId: string }) {
 				<Card className="p-5">
 					<div className="mb-5 flex items-center justify-between gap-3">
 						<div>
-							<p className="font-label text-[10px] uppercase tracking-[0.28em] text-ink-muted">
+							<p className="font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
 								当前卷册
 							</p>
-							<h3 className="mt-1 font-display text-xl text-ink">
+							<h3 className="mt-1 font-display text-ink text-xl">
 								{selected ? "编辑角色" : "新建角色"}
 							</h3>
 						</div>
@@ -180,7 +184,10 @@ export function CharactersPanel({ projectId }: { projectId: string }) {
 								disabled={pending}
 								id="character-name"
 								onChange={(event) =>
-									setForm((current) => ({ ...current, name: event.target.value }))
+									setForm((current) => ({
+										...current,
+										name: event.target.value,
+									}))
 								}
 								placeholder="角色名"
 								value={form.name}
@@ -206,13 +213,18 @@ export function CharactersPanel({ projectId }: { projectId: string }) {
 									disabled={pending}
 									id="character-traits"
 									onChange={(event) =>
-										setForm((current) => ({ ...current, traits: event.target.value }))
+										setForm((current) => ({
+											...current,
+											traits: event.target.value,
+										}))
 									}
 									placeholder="特质"
 									value={form.traits}
 								/>
 							</Field>
-							<Field label={<Label htmlFor="character-relationships">关系</Label>}>
+							<Field
+								label={<Label htmlFor="character-relationships">关系</Label>}
+							>
 								<TextArea
 									disabled={pending}
 									id="character-relationships"
@@ -232,7 +244,10 @@ export function CharactersPanel({ projectId }: { projectId: string }) {
 								disabled={pending}
 								id="character-notes"
 								onChange={(event) =>
-									setForm((current) => ({ ...current, notes: event.target.value }))
+									setForm((current) => ({
+										...current,
+										notes: event.target.value,
+									}))
 								}
 								placeholder="备注"
 								value={form.notes}
@@ -240,7 +255,11 @@ export function CharactersPanel({ projectId }: { projectId: string }) {
 						</Field>
 					</div>
 
-					{error && <p className="mt-4 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">{error}</p>}
+					{error && (
+						<p className="mt-4 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">
+							{error}
+						</p>
+					)}
 
 					<div className="mt-5 flex flex-wrap gap-2">
 						<Button
@@ -252,7 +271,13 @@ export function CharactersPanel({ projectId }: { projectId: string }) {
 							<Save aria-hidden="true" className="h-4 w-4" />
 							{pending ? "保存中..." : "保存"}
 						</Button>
-						<Button disabled={pending} onClick={startCreate} size="sm" type="button" variant="quiet">
+						<Button
+							disabled={pending}
+							onClick={startCreate}
+							size="sm"
+							type="button"
+							variant="quiet"
+						>
 							取消
 						</Button>
 						{selected && (

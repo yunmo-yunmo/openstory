@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, FolderUp, LoaderCircle, RefreshCcw } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { splitChapters } from "~/server/services/chapter-splitter";
 import { api } from "~/trpc/react";
 import { Badge } from "./ui/badge";
@@ -69,24 +69,22 @@ export function ImportChaptersDialog({
 		importChapters.mutate({ projectId, text });
 	};
 
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape" && !importChapters.isPending) {
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [onClose, importChapters.isPending]);
-
 	return (
 		<ModalShell
 			ariaLabel="关闭导入文本窗口"
 			className="max-w-3xl"
 			description="上传 TXT/MD 文件，自动识别章节结构。"
+			disableEscapeClose={importChapters.isPending}
+			disableOverlayClose={importChapters.isPending}
 			footer={
 				<div className="flex items-center justify-end gap-3">
-					<Button disabled={importChapters.isPending} onClick={onClose} size="sm" type="button" variant="quiet">
+					<Button
+						disabled={importChapters.isPending}
+						onClick={onClose}
+						size="sm"
+						type="button"
+						variant="quiet"
+					>
 						取消
 					</Button>
 					<Button
@@ -97,7 +95,10 @@ export function ImportChaptersDialog({
 					>
 						{importChapters.isPending ? (
 							<>
-								<LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
+								<LoaderCircle
+									aria-hidden="true"
+									className="h-4 w-4 animate-spin"
+								/>
 								导入中
 							</>
 						) : (
@@ -130,7 +131,12 @@ export function ImportChaptersDialog({
 					>
 						<FileText aria-hidden="true" className="h-10 w-10 text-amber" />
 						<p className="text-ink-dim text-sm">拖拽文件到此处，或</p>
-						<Button onClick={() => fileInputRef.current?.click()} size="sm" type="button" variant="secondary">
+						<Button
+							onClick={() => fileInputRef.current?.click()}
+							size="sm"
+							type="button"
+							variant="secondary"
+						>
 							选择文件
 						</Button>
 						<input
@@ -148,8 +154,12 @@ export function ImportChaptersDialog({
 						<Card className="p-4">
 							<div className="flex items-center gap-3">
 								<div className="min-w-0 flex-1">
-									<p className="truncate text-ink text-sm">{fileName || "粘贴文本"}</p>
-									<p className="mt-1 text-ink-dim text-xs">{splits.length} 个章节</p>
+									<p className="truncate text-ink text-sm">
+										{fileName || "粘贴文本"}
+									</p>
+									<p className="mt-1 text-ink-dim text-xs">
+										{splits.length} 个章节
+									</p>
 								</div>
 								<Button
 									onClick={() => {
@@ -168,16 +178,18 @@ export function ImportChaptersDialog({
 
 						{splits.length > 0 && (
 							<div className="flex flex-col gap-2">
-								<p className="font-label text-[10px] uppercase tracking-[0.28em] text-ink-muted">
+								<p className="font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
 									章节预览
 								</p>
-								<div className="max-h-[300px] overflow-y-auto space-y-2">
+								<div className="max-h-[300px] space-y-2 overflow-y-auto">
 									{splits.map((split, i) => (
 										<Card className="px-3 py-2" key={split.title}>
 											<div className="flex gap-3">
 												<Badge tone="muted">{i + 1}</Badge>
 												<div className="min-w-0 flex-1">
-													<p className="truncate text-ink text-sm">{split.title}</p>
+													<p className="truncate text-ink text-sm">
+														{split.title}
+													</p>
 													<p className="mt-0.5 truncate text-ink-dim text-xs">
 														{split.content.slice(0, 50)}
 													</p>
