@@ -1,8 +1,11 @@
 "use client";
 
+import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { DiffProposal } from "./extensions/inline-diff";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 export function InlineDiffToolbar({
 	proposals,
@@ -32,7 +35,7 @@ export function InlineDiffToolbar({
 					const rect = el.getBoundingClientRect();
 					items.push({
 						id: proposal.id,
-						top: rect.top - 40,
+						top: rect.top - 44,
 						left: rect.left,
 					});
 				}
@@ -53,28 +56,32 @@ export function InlineDiffToolbar({
 			if (!proposal || proposal.status !== "pending") return null;
 
 			return (
-				<div
-					className="fixed z-50 flex items-center gap-1.5 rounded-sm border border-study-600 bg-study-800 px-2 py-1 shadow-lg"
+				<Card
+					className="fixed z-50 flex items-center gap-2 p-1"
 					key={pos.id}
 					style={{ top: pos.top, left: pos.left }}
 				>
-					<button
-						className="rounded-sm border border-sage/40 bg-sage/10 px-2 py-0.5 font-sans text-sage text-xs transition-colors hover:border-sage hover:bg-sage/20 disabled:opacity-50"
+					<Button
 						disabled={isAccepting}
 						onClick={() => onAccept(proposal.id)}
+						size="sm"
 						type="button"
+						variant="quiet"
 					>
+						<Check aria-hidden="true" className="h-4 w-4" />
 						{isAccepting ? "..." : "采纳"}
-					</button>
-					<button
-						className="rounded-sm border border-rust/40 bg-rust/10 px-2 py-0.5 font-sans text-rust text-xs transition-colors hover:border-rust hover:bg-rust/20 disabled:opacity-50"
+					</Button>
+					<Button
 						disabled={isRejecting}
 						onClick={() => onReject(proposal.id)}
+						size="sm"
 						type="button"
+						variant="danger"
 					>
+						<X aria-hidden="true" className="h-4 w-4" />
 						{isRejecting ? "..." : "拒绝"}
-					</button>
-				</div>
+					</Button>
+				</Card>
 			);
 		}),
 		document.body,

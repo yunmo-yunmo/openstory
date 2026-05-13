@@ -1,8 +1,14 @@
 "use client";
 
+import { Globe, Plus, Save, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { tiptapToPlainText } from "~/server/services/tiptap-converter";
 import { api } from "~/trpc/react";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Field, Label, Select, TextArea, TextInput } from "./ui/form";
+import { PanelHeader } from "./ui/panel-header";
 
 type WorldNoteForm = {
 	title: string;
@@ -130,157 +136,193 @@ export function WorldNotesPanel({ projectId }: { projectId: string }) {
 		deleteNote.error?.message;
 
 	return (
-		<section className="min-w-0 flex-1 overflow-y-auto bg-study-900 px-8 py-6">
-			<div className="mx-auto flex max-w-5xl gap-6 max-lg:flex-col">
-				<div className="w-80 shrink-0 max-lg:w-full">
-					<div className="mb-3 flex items-center justify-between">
-						<h2 className="font-display text-2xl text-ink">世界设定</h2>
-						<button
-							className="rounded-sm bg-amber/20 px-3 py-1.5 font-sans text-amber text-sm disabled:opacity-40"
-							disabled={pending}
-							onClick={startCreate}
-							type="button"
-						>
-							新建
-						</button>
-					</div>
-					<div className="space-y-2">
-						{notes.length === 0 && (
+		<section className="min-w-0 flex-1 overflow-y-auto bg-study-900 px-6 py-6 lg:px-8">
+			<PanelHeader
+				action={
+					<Button onClick={startCreate} size="sm" type="button">
+						<Plus aria-hidden="true" className="h-4 w-4" />
+						新建设定
+					</Button>
+				}
+				description="世界观、地名、历史与风俗的索引。"
+				title="世界设定"
+				volume="Volume X · World Notes"
+			/>
+
+			<div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+				<div className="space-y-2">
+					{notes.length === 0 && (
+						<Card className="p-4">
 							<button
-								className="w-full rounded-sm border border-study-600 px-4 py-6 text-center font-sans text-ink-dim text-sm"
+								className="w-full text-center text-ink-dim text-sm"
 								onClick={startCreate}
 								type="button"
 							>
 								创建第一条世界设定
 							</button>
-						)}
-						{notes.map((note) => (
-							<button
-								className={`w-full rounded-sm border px-3 py-2 text-left transition-colors ${
-									note.id === selectedId
-										? "border-amber bg-amber-glow"
-										: "border-study-600 bg-study-800 hover:border-study-500"
-								}`}
-								key={note.id}
-								onClick={() => startEdit(note)}
-								type="button"
-							>
-								<p className="truncate font-sans text-ink text-sm">
-									{note.title}
-								</p>
-								<p className="mt-1 font-mono text-ink-dim text-xs">
-									{note.category} · {note.order}
-								</p>
-							</button>
-						))}
-					</div>
-				</div>
-				<div className="min-w-0 flex-1 rounded-sm border border-study-600 bg-study-800 p-5">
-					<h3 className="mb-4 font-sans font-semibold text-ink-muted text-sm">
-						{selected ? "编辑世界设定" : "新建世界设定"}
-					</h3>
-					<div className="grid gap-4">
-						<input
-							className="w-full rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-							disabled={pending}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									title: event.target.value,
-								}))
-							}
-							placeholder="标题"
-							value={form.title}
-						/>
-						<textarea
-							className="min-h-52 w-full rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-							disabled={pending}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									content: event.target.value,
-								}))
-							}
-							placeholder="设定内容"
-							value={form.content}
-						/>
-						<div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-							<select
-								className="rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-								disabled={pending}
-								onChange={(event) =>
-									setForm((current) => ({
-										...current,
-										category: event.target.value as WorldNoteForm["category"],
-									}))
-								}
-								value={form.category}
-							>
-								<option value="general">general</option>
-								<option value="location">location</option>
-								<option value="history">history</option>
-								<option value="magic">magic</option>
-								<option value="culture">culture</option>
-								<option value="other">other</option>
-							</select>
-							<input
-								className="rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-								disabled={pending}
-								min={0}
-								onChange={(event) =>
-									setForm((current) => ({
-										...current,
-										order: event.target.value,
-									}))
-								}
-								type="number"
-								value={form.order}
-							/>
-						</div>
-						<input
-							className="w-full rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-							disabled={pending}
-							onChange={(event) =>
-								setForm((current) => ({ ...current, tags: event.target.value }))
-							}
-							placeholder="标签，用逗号分隔"
-							value={form.tags}
-						/>
-					</div>
-					{error && <p className="mt-3 text-rust text-sm">{error}</p>}
-					<div className="mt-5 flex flex-wrap gap-2">
+						</Card>
+					)}
+					{notes.map((note) => (
 						<button
-							className="rounded-sm bg-amber/20 px-4 py-2 font-sans text-amber text-sm disabled:opacity-40"
+							className={`w-full rounded border px-4 py-3 text-left transition-all duration-300 ${
+								note.id === selectedId
+									? "border-amber/60 bg-amber/10"
+									: "border-study-600 bg-study-800/70 hover:border-study-500 hover:bg-study-700/70"
+							}`}
+							key={note.id}
+							onClick={() => startEdit(note)}
+							type="button"
+						>
+							<p className="truncate text-ink text-sm">{note.title}</p>
+							<p className="mt-1 text-ink-dim text-xs">
+								{note.category} · {note.order}
+							</p>
+						</button>
+					))}
+				</div>
+
+				<Card className="p-5">
+					<div className="mb-5 flex items-center justify-between gap-3">
+						<div>
+							<p className="font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
+								资料卷册
+							</p>
+							<h3 className="mt-1 font-display text-ink text-xl">
+								{selected ? "编辑世界设定" : "新建世界设定"}
+							</h3>
+						</div>
+						<Badge tone={selected ? "brass" : "muted"}>
+							<Globe aria-hidden="true" className="h-3.5 w-3.5" />
+						</Badge>
+					</div>
+
+					<div className="grid gap-4">
+						<Field label={<Label htmlFor="world-title">标题</Label>}>
+							<TextInput
+								disabled={pending}
+								id="world-title"
+								onChange={(event) =>
+									setForm((current) => ({
+										...current,
+										title: event.target.value,
+									}))
+								}
+								placeholder="标题"
+								value={form.title}
+							/>
+						</Field>
+						<Field label={<Label htmlFor="world-content">设定内容</Label>}>
+							<TextArea
+								className="min-h-64"
+								disabled={pending}
+								id="world-content"
+								onChange={(event) =>
+									setForm((current) => ({
+										...current,
+										content: event.target.value,
+									}))
+								}
+								placeholder="设定内容"
+								value={form.content}
+							/>
+						</Field>
+						<div className="grid gap-4 lg:grid-cols-2">
+							<Field label={<Label htmlFor="world-category">分类</Label>}>
+								<Select
+									disabled={pending}
+									id="world-category"
+									onChange={(event) =>
+										setForm((current) => ({
+											...current,
+											category: event.target.value as WorldNoteForm["category"],
+										}))
+									}
+									value={form.category}
+								>
+									<option value="general">general</option>
+									<option value="location">location</option>
+									<option value="history">history</option>
+									<option value="magic">magic</option>
+									<option value="culture">culture</option>
+									<option value="other">other</option>
+								</Select>
+							</Field>
+							<Field label={<Label htmlFor="world-order">顺序</Label>}>
+								<TextInput
+									disabled={pending}
+									id="world-order"
+									min={0}
+									onChange={(event) =>
+										setForm((current) => ({
+											...current,
+											order: event.target.value,
+										}))
+									}
+									type="number"
+									value={form.order}
+								/>
+							</Field>
+						</div>
+						<Field label={<Label htmlFor="world-tags">标签</Label>}>
+							<TextInput
+								disabled={pending}
+								id="world-tags"
+								onChange={(event) =>
+									setForm((current) => ({
+										...current,
+										tags: event.target.value,
+									}))
+								}
+								placeholder="标签，用逗号分隔"
+								value={form.tags}
+							/>
+						</Field>
+					</div>
+
+					{error && (
+						<p className="mt-4 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">
+							{error}
+						</p>
+					)}
+
+					<div className="mt-5 flex flex-wrap gap-2">
+						<Button
 							disabled={pending || !form.title.trim()}
 							onClick={save}
+							size="sm"
 							type="button"
 						>
+							<Save aria-hidden="true" className="h-4 w-4" />
 							{pending ? "保存中..." : "保存"}
-						</button>
-						<button
-							className="rounded-sm px-4 py-2 font-sans text-ink-dim text-sm hover:text-ink-muted"
+						</Button>
+						<Button
 							disabled={pending}
 							onClick={startCreate}
+							size="sm"
 							type="button"
+							variant="quiet"
 						>
 							取消
-						</button>
+						</Button>
 						{selected && (
-							<button
-								className="ml-auto rounded-sm px-4 py-2 font-sans text-rust text-sm hover:bg-rust/10 disabled:opacity-40"
+							<Button
+								className="ml-auto"
 								disabled={pending}
 								onClick={() =>
 									confirmDeleteId === selected.id
 										? deleteNote.mutate({ id: selected.id })
 										: setConfirmDeleteId(selected.id)
 								}
+								size="sm"
 								type="button"
+								variant="danger"
 							>
+								<Trash2 aria-hidden="true" className="h-4 w-4" />
 								{confirmDeleteId === selected.id ? "确认删除" : "删除"}
-							</button>
+							</Button>
 						)}
 					</div>
-				</div>
+				</Card>
 			</div>
 		</section>
 	);

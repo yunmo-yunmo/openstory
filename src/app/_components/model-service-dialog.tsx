@@ -1,7 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+	CheckCircle2,
+	LoaderCircle,
+	Plus,
+	RotateCcw,
+	Shield,
+	Trash2,
+	Wand2,
+} from "lucide-react";
+import { useState } from "react";
 import { api } from "~/trpc/react";
+import { getConfigCardMutationState } from "./model-service-dialog-state";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { EmptyState } from "./ui/empty-state";
+import { Field, Label, Select, TextInput } from "./ui/form";
+import { ModalShell } from "./ui/modal";
 
 interface ModelServiceDialogProps {
 	onClose: () => void;
@@ -17,36 +33,20 @@ const PROVIDER_LABELS: Record<ProviderType, string> = {
 export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 	const utils = api.useUtils();
 	const [showCreateForm, setShowCreateForm] = useState(false);
-	const panelRef = useRef<HTMLDivElement>(null);
 
 	const [configs] = api.llmConfig.list.useSuspenseQuery();
 
-	// Create form state
 	const [name, setName] = useState("");
 	const [providerType, setProviderType] = useState<ProviderType>("anthropic");
 	const [apiKey, setApiKey] = useState("");
 	const [baseUrl, setBaseUrl] = useState("");
 	const [model, setModel] = useState("");
 
-	// Close on Escape
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [onClose]);
-
-	const handleOverlayClick = () => onClose();
-
 	const invalidateList = async () => {
 		await utils.llmConfig.list.invalidate();
 		await utils.llmConfig.status.invalidate();
 	};
 
-	// Mutations
 	const createMutation = api.llmConfig.create.useMutation({
 		onSuccess: async () => {
 			setName("");
@@ -93,103 +93,96 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 	};
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-			<button
-				aria-label="关闭模型服务窗口"
-				className="absolute inset-0 cursor-default"
-				onClick={handleOverlayClick}
-				type="button"
-			/>
-			<div
-				className="relative z-10 flex max-h-[85vh] w-full max-w-2xl flex-col rounded-sm border border-study-600 bg-study-800 shadow-[0_8px_48px_rgba(0,0,0,0.5)]"
-				ref={panelRef}
-			>
-				{/* Header */}
-				<div className="shrink-0 border-study-600 border-b px-6 py-5">
-					<h2 className="font-display text-ink text-xl">模型服务</h2>
-					<p className="mt-1 text-ink-muted text-sm">
-						配置 AI 提供商并管理写作助手的 API 密钥。
-					</p>
+		<ModalShell
+			ariaLabel="关闭模型服务窗口"
+			className="max-w-4xl"
+			description="配置 AI 提供商并管理写作助手的 API 密钥。"
+			disableEscapeClose={createMutation.isPending}
+			disableOverlayClose={createMutation.isPending}
+			footer={
+				<div className="flex items-center justify-end">
+					<Button
+						disabled={createMutation.isPending}
+						onClick={onClose}
+						size="sm"
+						type="button"
+						variant="quiet"
+					>
+						关闭
+					</Button>
 				</div>
-
-				{/* Scrollable body */}
-				<div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-					{/* Config list */}
-					{configs.length === 0 && !showCreateForm && (
-						<div className="flex flex-col items-center gap-4 py-8 text-center">
-							<svg
+			}
+			onClose={onClose}
+			title="模型服务"
+		>
+			<div className="flex flex-col gap-5">
+				{configs.length === 0 && !showCreateForm && (
+					<EmptyState
+						action={
+							<Button onClick={() => setShowCreateForm(true)} size="sm">
+								<Plus aria-hidden="true" className="h-4 w-4" />
+								添加模型服务
+							</Button>
+						}
+						description="添加一个提供商即可开始与 AI 助手对话。"
+						icon={
+							<Shield
 								aria-hidden="true"
-								className="h-12 w-12 text-ink-dim"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth={1}
-								viewBox="0 0 24 24"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-							</svg>
-							<div>
-								<p className="font-sans text-ink-muted text-sm">
-									暂无模型服务配置
-								</p>
-								<p className="mt-1 font-sans text-ink-dim text-xs">
-									添加一个提供商即可开始与 AI 助手对话
-								</p>
-							</div>
-						</div>
-					)}
+								className="h-9 w-9"
+								strokeWidth={1.5}
+							/>
+						}
+						title="暂无模型服务配置"
+						volume="Volume III · Provider Registry"
+					/>
+				)}
 
-					{configs.map((config) => (
-						<ConfigCard
-							config={config}
-							deleteMutation={deleteMutation}
-							fetchModelsMutation={fetchModelsMutation}
-							key={config.id}
-							setActiveMutation={setActiveMutation}
-							testConnectionMutation={testConnectionMutation}
-						/>
-					))}
+				{configs.map((config) => (
+					<ConfigCard
+						config={config}
+						deleteMutation={deleteMutation}
+						fetchModelsMutation={fetchModelsMutation}
+						key={config.id}
+						setActiveMutation={setActiveMutation}
+						testConnectionMutation={testConnectionMutation}
+					/>
+				))}
 
-					{/* Create form */}
-					{showCreateForm && (
-						<form
-							className="mt-4 flex flex-col gap-4 rounded-sm border border-study-600 bg-study-900 p-5"
-							onSubmit={handleCreate}
-						>
-							<h3 className="font-display text-ink text-sm">新建模型服务</h3>
-
-							{/* Name */}
-							<div className="flex flex-col gap-1.5">
-								<label
-									className="font-sans text-ink-muted text-xs uppercase tracking-wider"
-									htmlFor="config-name"
+				{showCreateForm && (
+					<Card className="p-5">
+						<form className="flex flex-col gap-4" onSubmit={handleCreate}>
+							<div className="flex items-center justify-between gap-3">
+								<div>
+									<p className="mb-1 font-label text-[10px] text-amber uppercase tracking-[0.28em]">
+										Volume IV
+									</p>
+									<h3 className="font-display text-ink text-xl">
+										新建模型服务
+									</h3>
+								</div>
+								<Button
+									disabled={createMutation.isPending}
+									onClick={() => setShowCreateForm(false)}
+									size="sm"
+									type="button"
+									variant="quiet"
 								>
-									名称
-								</label>
-								<input
-									className="rounded-sm border border-study-600 bg-study-800 px-3 py-2 font-sans text-ink text-sm placeholder:text-ink-dim/60 focus:border-amber/60 focus:outline-none focus:ring-1 focus:ring-amber/40"
+									取消
+								</Button>
+							</div>
+
+							<Field label={<Label htmlFor="config-name">名称</Label>}>
+								<TextInput
 									id="config-name"
 									onChange={(e) => setName(e.target.value)}
 									placeholder="My Anthropic Key"
 									type="text"
 									value={name}
 								/>
-							</div>
+							</Field>
 
-							{/* Provider type */}
-							<div className="flex flex-col gap-1.5">
-								<label
-									className="font-sans text-ink-muted text-xs uppercase tracking-wider"
-									htmlFor="config-provider"
-								>
-									提供商
-								</label>
-								<select
-									className="rounded-sm border border-study-600 bg-study-800 px-3 py-2 font-sans text-ink text-sm focus:border-amber/60 focus:outline-none focus:ring-1 focus:ring-amber/40"
+							<Field label={<Label htmlFor="config-provider">提供商</Label>}>
+								<Select
 									id="config-provider"
 									onChange={(e) =>
 										setProviderType(e.target.value as ProviderType)
@@ -198,61 +191,47 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 								>
 									<option value="anthropic">Anthropic</option>
 									<option value="openai-compatible">OpenAI 兼容</option>
-								</select>
-							</div>
+								</Select>
+							</Field>
 
-							{/* API Key */}
-							<div className="flex flex-col gap-1.5">
-								<label
-									className="font-sans text-ink-muted text-xs uppercase tracking-wider"
-									htmlFor="config-apikey"
-								>
-									API 密钥
-								</label>
-								<input
-									className="rounded-sm border border-study-600 bg-study-800 px-3 py-2 font-sans text-ink text-sm placeholder:text-ink-dim/60 focus:border-amber/60 focus:outline-none focus:ring-1 focus:ring-amber/40"
+							<Field label={<Label htmlFor="config-apikey">API 密钥</Label>}>
+								<TextInput
 									id="config-apikey"
 									onChange={(e) => setApiKey(e.target.value)}
 									placeholder="sk-..."
 									type="password"
 									value={apiKey}
 								/>
-							</div>
+							</Field>
 
-							{/* Base URL (only for openai-compatible) */}
 							{providerType === "openai-compatible" && (
-								<div className="flex flex-col gap-1.5">
-									<label
-										className="font-sans text-ink-muted text-xs uppercase tracking-wider"
-										htmlFor="config-baseurl"
-									>
-										接口地址
-										<span className="ml-1 text-ink-dim normal-case">
-											(可选)
-										</span>
-									</label>
-									<input
-										className="rounded-sm border border-study-600 bg-study-800 px-3 py-2 font-sans text-ink text-sm placeholder:text-ink-dim/60 focus:border-amber/60 focus:outline-none focus:ring-1 focus:ring-amber/40"
+								<Field
+									label={
+										<Label htmlFor="config-baseurl">
+											接口地址{" "}
+											<span className="text-ink-dim normal-case">(可选)</span>
+										</Label>
+									}
+								>
+									<TextInput
 										id="config-baseurl"
 										onChange={(e) => setBaseUrl(e.target.value)}
 										placeholder="https://api.openai.com/v1"
 										type="url"
 										value={baseUrl}
 									/>
-								</div>
+								</Field>
 							)}
 
-							{/* Model */}
-							<div className="flex flex-col gap-1.5">
-								<label
-									className="font-sans text-ink-muted text-xs uppercase tracking-wider"
-									htmlFor="config-model"
-								>
-									默认模型
-									<span className="ml-1 text-ink-dim normal-case">(可选)</span>
-								</label>
-								<input
-									className="rounded-sm border border-study-600 bg-study-800 px-3 py-2 font-sans text-ink text-sm placeholder:text-ink-dim/60 focus:border-amber/60 focus:outline-none focus:ring-1 focus:ring-amber/40"
+							<Field
+								label={
+									<Label htmlFor="config-model">
+										默认模型{" "}
+										<span className="text-ink-dim normal-case">(可选)</span>
+									</Label>
+								}
+							>
+								<TextInput
 									id="config-model"
 									onChange={(e) => setModel(e.target.value)}
 									placeholder={
@@ -263,83 +242,66 @@ export function ModelServiceDialog({ onClose }: ModelServiceDialogProps) {
 									type="text"
 									value={model}
 								/>
-							</div>
+							</Field>
 
-							{/* Create form errors */}
 							{createMutation.error && (
-								<p className="rounded-sm border border-rust/30 bg-rust/10 px-3 py-2 text-rust text-xs">
+								<p className="rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">
 									{createMutation.error.message ?? "创建配置失败"}
 								</p>
 							)}
 
-							{/* Form actions */}
-							<div className="flex items-center justify-end gap-3 border-study-600 border-t pt-4">
-								<button
-									className="rounded-sm border border-study-600 px-4 py-2 font-sans text-ink-muted text-sm transition-colors hover:border-study-500 hover:bg-study-700 hover:text-ink"
+							<div className="flex items-center justify-end gap-3 pt-2">
+								<Button
 									disabled={createMutation.isPending}
 									onClick={() => setShowCreateForm(false)}
+									size="sm"
 									type="button"
+									variant="quiet"
 								>
 									取消
-								</button>
-								<button
-									className="rounded-sm border border-amber/50 bg-amber/10 px-6 py-2 font-sans text-amber text-sm transition-all duration-300 hover:border-amber hover:bg-amber/20 disabled:cursor-not-allowed disabled:opacity-40"
+								</Button>
+								<Button
 									disabled={!isSubmittable || createMutation.isPending}
+									size="sm"
 									type="submit"
 								>
-									{createMutation.isPending ? "保存中..." : "创建"}
-								</button>
+									{createMutation.isPending ? (
+										<>
+											<LoaderCircle
+												aria-hidden="true"
+												className="h-4 w-4 animate-spin"
+											/>
+											保存中
+										</>
+									) : (
+										<>
+											<Wand2 aria-hidden="true" className="h-4 w-4" />
+											创建
+										</>
+									)}
+								</Button>
 							</div>
 						</form>
-					)}
+					</Card>
+				)}
 
-					{/* Add new button */}
-					{!showCreateForm && (
-						<button
-							className="mt-4 inline-flex items-center gap-2 rounded-sm border border-study-600 px-4 py-2 font-sans text-ink-muted text-sm transition-colors hover:border-study-500 hover:bg-study-700 hover:text-ink"
+				{!showCreateForm && (
+					<div className="flex justify-start">
+						<Button
 							onClick={() => setShowCreateForm(true)}
+							size="sm"
 							type="button"
+							variant="quiet"
 						>
-							<svg
-								aria-hidden="true"
-								className="h-4 w-4"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth={2}
-								viewBox="0 0 24 24"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M12 5v14m-7-7h14"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-							</svg>
+							<Plus aria-hidden="true" className="h-4 w-4" />
 							添加模型服务
-						</button>
-					)}
-				</div>
-
-				{/* Footer */}
-				<div className="shrink-0 border-study-600 border-t px-6 py-4">
-					<div className="flex items-center justify-end">
-						<button
-							className="rounded-sm border border-study-600 px-5 py-2 font-sans text-ink-muted text-sm transition-colors hover:border-study-500 hover:bg-study-700 hover:text-ink"
-							onClick={onClose}
-							type="button"
-						>
-							关闭
-						</button>
+						</Button>
 					</div>
-				</div>
+				)}
 			</div>
-		</div>
+		</ModalShell>
 	);
 }
-
-/* ------------------------------------------------------------------ */
-/* Config card                                                         */
-/* ------------------------------------------------------------------ */
 
 interface ConfigCardProps {
 	config: {
@@ -369,39 +331,37 @@ function ConfigCard({
 	testConnectionMutation,
 }: ConfigCardProps) {
 	const [confirmDelete, setConfirmDelete] = useState(false);
-
-	const isLoading =
-		fetchModelsMutation.isPending ||
-		testConnectionMutation.isPending ||
-		setActiveMutation.isPending ||
-		(deleteMutation.isPending && deleteMutation.variables?.id === config.id);
+	const {
+		isActivatingCard,
+		isDeletingCard,
+		isFetchingModelsForCard,
+		isLoading,
+		isTestingConnectionForCard,
+	} = getConfigCardMutationState({
+		configId: config.id,
+		deleteMutation,
+		fetchModelsMutation,
+		setActiveMutation,
+		testConnectionMutation,
+	});
 
 	return (
-		<div
-			className={`rounded-sm border p-4 ${
-				config.isActive
-					? "border-amber/40 bg-amber/5"
-					: "border-study-600 bg-study-900"
-			}`}
+		<Card
+			className={config.isActive ? "border-amber/50 bg-amber/5 p-4" : "p-4"}
 		>
-			{/* Top row: name, provider badge, active indicator */}
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-2">
-						<h4 className="truncate font-display text-ink text-sm">
+						<h4 className="truncate font-display text-ink text-lg">
 							{config.name}
 						</h4>
-						{config.isActive && (
-							<span className="shrink-0 rounded-sm bg-amber/20 px-1.5 py-0.5 font-sans text-[10px] text-amber uppercase tracking-wider">
-								使用中
-							</span>
-						)}
+						{config.isActive && <Badge tone="brass">使用中</Badge>}
 					</div>
-					<div className="mt-1 flex flex-wrap items-center gap-2">
-						<span className="rounded-sm border border-study-500 px-1.5 py-0.5 font-sans text-[10px] text-ink-dim">
+					<div className="mt-2 flex flex-wrap items-center gap-2">
+						<Badge tone="muted">
 							{PROVIDER_LABELS[config.providerType as ProviderType] ??
 								config.providerType}
-						</span>
+						</Badge>
 						{config.model && (
 							<span className="font-mono text-ink-dim text-xs">
 								{config.model}
@@ -416,21 +376,20 @@ function ConfigCard({
 				</div>
 			</div>
 
-			{/* Available models */}
 			{config.availableModels.length > 0 && (
-				<div className="mt-3 border-study-600/50 border-t pt-2">
-					<p className="font-sans text-ink-dim text-xs">
-						{config.availableModels.length}个模型可用
+				<div className="mt-4 border-study-600/60 border-t pt-3">
+					<p className="text-ink-dim text-xs">
+						{config.availableModels.length} 个模型可用
 						{config.modelsUpdatedAt && (
 							<span className="ml-1">
 								(获取于 {new Date(config.modelsUpdatedAt).toLocaleDateString()})
 							</span>
 						)}
 					</p>
-					<div className="mt-1 flex max-h-16 flex-wrap gap-1 overflow-y-auto">
+					<div className="mt-2 flex max-h-16 flex-wrap gap-1 overflow-y-auto">
 						{config.availableModels.slice(0, 8).map((m) => (
 							<span
-								className="rounded-sm bg-study-700 px-1.5 py-0.5 font-mono text-[10px] text-ink-dim"
+								className="rounded border border-study-600 bg-study-700 px-1.5 py-0.5 font-mono text-[10px] text-ink-dim"
 								key={m}
 							>
 								{m}
@@ -445,30 +404,29 @@ function ConfigCard({
 				</div>
 			)}
 
-			{/* Action buttons */}
-			<div className="mt-3 flex flex-wrap items-center gap-2 border-study-600/50 border-t pt-3">
+			<div className="mt-4 flex flex-wrap items-center gap-2 border-study-600/60 border-t pt-3">
 				{!config.isActive && (
-					<button
-						className="rounded-sm border border-amber/40 bg-amber/10 px-3 py-1.5 font-sans text-amber text-xs transition-colors hover:border-amber hover:bg-amber/20 disabled:cursor-not-allowed disabled:opacity-40"
-						disabled={setActiveMutation.isPending}
+					<Button
+						disabled={isLoading}
 						onClick={() => setActiveMutation.mutate({ id: config.id })}
+						size="sm"
 						type="button"
+						variant="secondary"
 					>
-						{setActiveMutation.isPending ? "激活中..." : "激活"}
-					</button>
+						{isActivatingCard ? "激活中" : "激活"}
+					</Button>
 				)}
-
-				<button
-					className="rounded-sm border border-study-600 px-3 py-1.5 font-sans text-ink-muted text-xs transition-colors hover:border-study-500 hover:bg-study-700 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+				<Button
 					disabled={isLoading}
 					onClick={() => fetchModelsMutation.mutate({ id: config.id })}
+					size="sm"
 					type="button"
+					variant="quiet"
 				>
-					{fetchModelsMutation.isPending ? "获取中..." : "获取模型"}
-				</button>
-
-				<button
-					className="rounded-sm border border-study-600 px-3 py-1.5 font-sans text-ink-muted text-xs transition-colors hover:border-study-500 hover:bg-study-700 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+					<RotateCcw aria-hidden="true" className="h-4 w-4" />
+					{isFetchingModelsForCard ? "获取中" : "获取模型"}
+				</Button>
+				<Button
 					disabled={isLoading}
 					onClick={() =>
 						testConnectionMutation.mutate({
@@ -476,65 +434,71 @@ function ConfigCard({
 							model: config.model ?? undefined,
 						})
 					}
+					size="sm"
 					type="button"
+					variant="quiet"
 				>
-					{testConnectionMutation.isPending ? "测试中..." : "测试连接"}
-				</button>
+					<CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+					{isTestingConnectionForCard ? "测试中" : "测试连接"}
+				</Button>
 
 				{!confirmDelete ? (
-					<button
-						className="ml-auto rounded-sm border border-study-600 px-3 py-1.5 font-sans text-ink-dim text-xs transition-colors hover:border-rust/40 hover:bg-rust/10 hover:text-rust disabled:cursor-not-allowed disabled:opacity-40"
+					<Button
+						className="ml-auto"
 						disabled={isLoading}
 						onClick={() => setConfirmDelete(true)}
+						size="sm"
 						type="button"
+						variant="danger"
 					>
+						<Trash2 aria-hidden="true" className="h-4 w-4" />
 						删除
-					</button>
+					</Button>
 				) : (
 					<div className="ml-auto flex items-center gap-2">
-						<span className="font-sans text-rust text-xs">
-							确认删除此服务？
-						</span>
-						<button
-							className="rounded-sm border border-rust/40 bg-rust/10 px-3 py-1.5 font-sans text-rust text-xs transition-colors hover:bg-rust/20"
+						<span className="text-rust text-xs">确认删除此服务？</span>
+						<Button
+							disabled={isLoading}
 							onClick={() => {
 								deleteMutation.mutate({ id: config.id });
-								setConfirmDelete(false);
 							}}
+							size="sm"
 							type="button"
+							variant="danger"
 						>
-							确认
-						</button>
-						<button
-							className="rounded-sm border border-study-600 px-3 py-1.5 font-sans text-ink-muted text-xs transition-colors hover:bg-study-700"
+							{isDeletingCard ? "删除中" : "确认"}
+						</Button>
+						<Button
+							disabled={isLoading}
 							onClick={() => setConfirmDelete(false)}
+							size="sm"
 							type="button"
+							variant="quiet"
 						>
 							取消
-						</button>
+						</Button>
 					</div>
 				)}
 			</div>
 
-			{/* Mutation feedback */}
 			{fetchModelsMutation.error &&
 				fetchModelsMutation.variables?.id === config.id && (
-					<p className="mt-2 rounded-sm border border-rust/30 bg-rust/10 px-3 py-1.5 text-rust text-xs">
+					<p className="mt-3 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-xs">
 						{fetchModelsMutation.error.message ?? "获取模型失败"}
 					</p>
 				)}
 			{testConnectionMutation.error &&
 				testConnectionMutation.variables?.id === config.id && (
-					<p className="mt-2 rounded-sm border border-rust/30 bg-rust/10 px-3 py-1.5 text-rust text-xs">
+					<p className="mt-3 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-xs">
 						{testConnectionMutation.error.message ?? "连接测试失败"}
 					</p>
 				)}
 			{testConnectionMutation.isSuccess &&
 				testConnectionMutation.variables?.id === config.id && (
-					<p className="mt-2 rounded-sm border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-green-400 text-xs">
+					<p className="mt-3 rounded border border-sage/30 bg-sage/10 px-3 py-2 text-sage-light text-xs">
 						连接成功
 					</p>
 				)}
-		</div>
+		</Card>
 	);
 }

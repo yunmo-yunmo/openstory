@@ -1,7 +1,13 @@
 "use client";
 
+import { Layers3, Plus, Save, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "~/trpc/react";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Field, Label, Select, TextArea, TextInput } from "./ui/form";
+import { PanelHeader } from "./ui/panel-header";
 
 type OutlineForm = {
 	title: string;
@@ -120,184 +126,220 @@ export function OutlinePanel({ projectId }: { projectId: string }) {
 		deleteOutline.error?.message;
 
 	return (
-		<section className="min-w-0 flex-1 overflow-y-auto bg-study-900 px-8 py-6">
-			<div className="mx-auto flex max-w-5xl gap-6 max-lg:flex-col">
-				<div className="w-80 shrink-0 max-lg:w-full">
-					<div className="mb-3 flex items-center justify-between">
-						<h2 className="font-display text-2xl text-ink">大纲</h2>
-						<button
-							className="rounded-sm bg-amber/20 px-3 py-1.5 font-sans text-amber text-sm disabled:opacity-40"
-							disabled={pending}
-							onClick={startCreate}
-							type="button"
-						>
-							新建
-						</button>
-					</div>
-					<div className="space-y-2">
-						{outlines.length === 0 && (
+		<section className="min-w-0 flex-1 overflow-y-auto bg-study-900 px-6 py-6 lg:px-8">
+			<PanelHeader
+				action={
+					<Button onClick={startCreate} size="sm" type="button">
+						<Plus aria-hidden="true" className="h-4 w-4" />
+						新建节点
+					</Button>
+				}
+				description="树状结构、章节关联与写作状态。"
+				title="大纲"
+				volume="Volume IX · Outline Index"
+			/>
+
+			<div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+				<div className="space-y-2">
+					{outlines.length === 0 && (
+						<Card className="p-4">
 							<button
-								className="w-full rounded-sm border border-study-600 px-4 py-6 text-center font-sans text-ink-dim text-sm"
+								className="w-full text-center text-ink-dim text-sm"
 								onClick={startCreate}
 								type="button"
 							>
 								创建第一个大纲节点
 							</button>
-						)}
-						{outlines.map((outline) => (
-							<button
-								className={`w-full rounded-sm border px-3 py-2 text-left transition-colors ${
-									outline.id === selectedId
-										? "border-amber bg-amber-glow"
-										: "border-study-600 bg-study-800 hover:border-study-500"
-								}`}
-								key={outline.id}
-								onClick={() => startEdit(outline)}
-								type="button"
-							>
-								<p className="truncate font-sans text-ink text-sm">
-									{outline.parentId ? "  " : ""}
-									{outline.title}
-								</p>
-								<p className="mt-1 font-mono text-ink-dim text-xs">
-									{outline.status} · {outline.order}
-								</p>
-							</button>
-						))}
-					</div>
-				</div>
-				<div className="min-w-0 flex-1 rounded-sm border border-study-600 bg-study-800 p-5">
-					<h3 className="mb-4 font-sans font-semibold text-ink-muted text-sm">
-						{selected ? "编辑大纲" : "新建大纲"}
-					</h3>
-					<div className="grid gap-4">
-						<input
-							className="w-full rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-							disabled={pending}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									title: event.target.value,
-								}))
-							}
-							placeholder="标题"
-							value={form.title}
-						/>
-						<textarea
-							className="min-h-24 w-full rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-							disabled={pending}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									description: event.target.value,
-								}))
-							}
-							placeholder="描述"
-							value={form.description}
-						/>
-						<div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-							<select
-								className="rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-								disabled={pending}
-								onChange={(event) =>
-									setForm((current) => ({
-										...current,
-										status: event.target.value as OutlineForm["status"],
-									}))
-								}
-								value={form.status}
-							>
-								<option value="planned">planned</option>
-								<option value="writing">writing</option>
-								<option value="done">done</option>
-							</select>
-							<input
-								className="rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-								disabled={pending}
-								min={0}
-								onChange={(event) =>
-									setForm((current) => ({
-										...current,
-										order: event.target.value,
-									}))
-								}
-								type="number"
-								value={form.order}
-							/>
-						</div>
-						<select
-							className="rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-							disabled={pending}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									parentId: event.target.value,
-								}))
-							}
-							value={form.parentId}
+						</Card>
+					)}
+					{outlines.map((outline) => (
+						<button
+							className={`w-full rounded border px-4 py-3 text-left transition-all duration-300 ${
+								outline.id === selectedId
+									? "border-amber/60 bg-amber/10"
+									: "border-study-600 bg-study-800/70 hover:border-study-500 hover:bg-study-700/70"
+							}`}
+							key={outline.id}
+							onClick={() => startEdit(outline)}
+							type="button"
 						>
-							<option value="">无父节点</option>
-							{outlines
-								.filter((outline) => outline.id !== selectedId)
-								.map((outline) => (
-									<option key={outline.id} value={outline.id}>
-										{outline.title}
+							<p className="truncate text-ink text-sm">
+								{outline.parentId ? "  " : ""}
+								{outline.title}
+							</p>
+							<p className="mt-1 text-ink-dim text-xs">
+								{outline.status} · {outline.order}
+							</p>
+						</button>
+					))}
+				</div>
+
+				<Card className="p-5">
+					<div className="mb-5 flex items-center justify-between gap-3">
+						<div>
+							<p className="font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
+								章节脉络
+							</p>
+							<h3 className="mt-1 font-display text-ink text-xl">
+								{selected ? "编辑大纲" : "新建大纲"}
+							</h3>
+						</div>
+						<Badge tone={selected ? "brass" : "muted"}>
+							<Layers3 aria-hidden="true" className="h-3.5 w-3.5" />
+						</Badge>
+					</div>
+
+					<div className="grid gap-4">
+						<Field label={<Label htmlFor="outline-title">标题</Label>}>
+							<TextInput
+								disabled={pending}
+								id="outline-title"
+								onChange={(event) =>
+									setForm((current) => ({
+										...current,
+										title: event.target.value,
+									}))
+								}
+								placeholder="标题"
+								value={form.title}
+							/>
+						</Field>
+						<Field label={<Label htmlFor="outline-description">描述</Label>}>
+							<TextArea
+								disabled={pending}
+								id="outline-description"
+								onChange={(event) =>
+									setForm((current) => ({
+										...current,
+										description: event.target.value,
+									}))
+								}
+								placeholder="描述"
+								value={form.description}
+							/>
+						</Field>
+						<div className="grid gap-4 lg:grid-cols-2">
+							<Field label={<Label htmlFor="outline-status">状态</Label>}>
+								<Select
+									disabled={pending}
+									id="outline-status"
+									onChange={(event) =>
+										setForm((current) => ({
+											...current,
+											status: event.target.value as OutlineForm["status"],
+										}))
+									}
+									value={form.status}
+								>
+									<option value="planned">planned</option>
+									<option value="writing">writing</option>
+									<option value="done">done</option>
+								</Select>
+							</Field>
+							<Field label={<Label htmlFor="outline-order">顺序</Label>}>
+								<TextInput
+									disabled={pending}
+									id="outline-order"
+									min={0}
+									onChange={(event) =>
+										setForm((current) => ({
+											...current,
+											order: event.target.value,
+										}))
+									}
+									type="number"
+									value={form.order}
+								/>
+							</Field>
+						</div>
+						<Field label={<Label htmlFor="outline-parent">父节点</Label>}>
+							<Select
+								disabled={pending}
+								id="outline-parent"
+								onChange={(event) =>
+									setForm((current) => ({
+										...current,
+										parentId: event.target.value,
+									}))
+								}
+								value={form.parentId}
+							>
+								<option value="">无父节点</option>
+								{outlines
+									.filter((outline) => outline.id !== selectedId)
+									.map((outline) => (
+										<option key={outline.id} value={outline.id}>
+											{outline.title}
+										</option>
+									))}
+							</Select>
+						</Field>
+						<Field label={<Label htmlFor="outline-chapter">章节</Label>}>
+							<Select
+								disabled={pending}
+								id="outline-chapter"
+								onChange={(event) =>
+									setForm((current) => ({
+										...current,
+										chapterId: event.target.value,
+									}))
+								}
+								value={form.chapterId}
+							>
+								<option value="">不关联章节</option>
+								{chapters.map((chapter) => (
+									<option key={chapter.id} value={chapter.id}>
+										{chapter.order}. {chapter.title}
 									</option>
 								))}
-						</select>
-						<select
-							className="rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm outline-none focus:border-amber/60"
-							disabled={pending}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									chapterId: event.target.value,
-								}))
-							}
-							value={form.chapterId}
-						>
-							<option value="">不关联章节</option>
-							{chapters.map((chapter) => (
-								<option key={chapter.id} value={chapter.id}>
-									{chapter.order}. {chapter.title}
-								</option>
-							))}
-						</select>
+							</Select>
+						</Field>
 					</div>
-					{error && <p className="mt-3 text-rust text-sm">{error}</p>}
+
+					{error && (
+						<p className="mt-4 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-rust-light text-sm">
+							{error}
+						</p>
+					)}
+
 					<div className="mt-5 flex flex-wrap gap-2">
-						<button
-							className="rounded-sm bg-amber/20 px-4 py-2 font-sans text-amber text-sm disabled:opacity-40"
+						<Button
 							disabled={pending || !form.title.trim()}
 							onClick={save}
+							size="sm"
 							type="button"
 						>
+							<Save aria-hidden="true" className="h-4 w-4" />
 							{pending ? "保存中..." : "保存"}
-						</button>
-						<button
-							className="rounded-sm px-4 py-2 font-sans text-ink-dim text-sm hover:text-ink-muted"
+						</Button>
+						<Button
 							disabled={pending}
 							onClick={startCreate}
+							size="sm"
 							type="button"
+							variant="quiet"
 						>
 							取消
-						</button>
+						</Button>
 						{selected && (
-							<button
-								className="ml-auto rounded-sm px-4 py-2 font-sans text-rust text-sm hover:bg-rust/10 disabled:opacity-40"
+							<Button
+								className="ml-auto"
 								disabled={pending}
 								onClick={() =>
 									confirmDeleteId === selected.id
 										? deleteOutline.mutate({ id: selected.id })
 										: setConfirmDeleteId(selected.id)
 								}
+								size="sm"
 								type="button"
+								variant="danger"
 							>
+								<Trash2 aria-hidden="true" className="h-4 w-4" />
 								{confirmDeleteId === selected.id ? "确认删除" : "删除"}
-							</button>
+							</Button>
 						)}
 					</div>
-				</div>
+				</Card>
 			</div>
 		</section>
 	);

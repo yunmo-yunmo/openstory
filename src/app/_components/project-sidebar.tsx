@@ -1,11 +1,16 @@
 "use client";
 
+import { ArrowLeftToLine, Download, Import, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { ImportChaptersDialog } from "./import-chapters-dialog";
 import type { WorkspaceMode } from "./story-bible-types";
 import { workspaceModes } from "./story-bible-types";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { VolumeLabel } from "./ui/decorative";
 
 function statusDot(status: string) {
 	switch (status) {
@@ -82,48 +87,31 @@ export function ProjectSidebar({
 
 	return (
 		<>
-			<aside className="flex w-[280px] shrink-0 flex-col border-study-600 border-r bg-study-800">
-				{/* Project header */}
-				<div className="shrink-0 border-study-600 border-b px-4 py-5">
-					<button
-						className="group flex w-full items-center gap-2 text-left"
-						onClick={() => router.push("/")}
-						type="button"
-					>
-						<svg
-							aria-hidden="true"
-							className="h-4 w-4 shrink-0 text-ink-dim transition-colors group-hover:text-amber"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth={2}
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d="M19 12H5m7-7l-7 7 7 7"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							/>
-						</svg>
-						<span className="font-sans text-ink-dim text-xs transition-colors group-hover:text-ink-muted">
-							项目列表
-						</span>
-					</button>
-					<h1 className="mt-3 font-display text-ink text-lg leading-snug">
-						{project?.title ?? "未命名"}
-					</h1>
-					{project?.genre && (
-						<span className="mt-2 inline-block rounded-sm border border-study-500 px-2 py-0.5 font-sans text-ink-muted text-xs">
-							{project.genre}
-						</span>
-					)}
-					<div className="mt-4 grid grid-cols-2 gap-1">
+			<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-r">
+				<div className="border-study-600 border-b px-5 py-5">
+					<Button onClick={() => router.push("/")} size="sm" variant="ghost">
+						<ArrowLeftToLine aria-hidden="true" className="h-4 w-4" />
+						项目列表
+					</Button>
+					<div className="mt-4">
+						<VolumeLabel>Volume VI · Project Ledger</VolumeLabel>
+						<h1 className="mt-2 font-display text-2xl text-ink leading-tight">
+							{project?.title ?? "未命名"}
+						</h1>
+						{project?.genre && (
+							<Badge className="mt-3" tone="brass">
+								{project.genre}
+							</Badge>
+						)}
+					</div>
+
+					<div className="mt-5 grid grid-cols-2 gap-2">
 						{workspaceModes.map((mode) => (
 							<button
-								className={`rounded-sm border px-2 py-1.5 font-sans text-xs transition-colors ${
+								className={`rounded border px-3 py-2 text-xs transition-all duration-300 ${
 									workspaceMode === mode.id
-										? "border-amber/60 bg-amber/15 text-amber"
-										: "border-study-600 bg-study-700/60 text-ink-dim hover:border-study-500 hover:text-ink-muted"
+										? "brass-gradient"
+										: "border-study-600 bg-study-700/50 text-ink-muted hover:border-amber/40 hover:text-ink"
 								}`}
 								key={mode.id}
 								onClick={() => onWorkspaceModeChange(mode.id)}
@@ -135,87 +123,46 @@ export function ProjectSidebar({
 					</div>
 				</div>
 
-				{/* Chapters section */}
 				<div className="flex min-h-0 flex-1 flex-col">
-					<div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
-						<h2 className="font-sans font-semibold text-ink-dim text-xs uppercase tracking-wider">
+					<div className="flex items-center justify-between px-5 py-4">
+						<h2 className="font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
 							章节
 						</h2>
-						<div className="flex gap-1">
-							<button
+						<div className="flex gap-2">
+							<Button
 								aria-label="导入文本"
-								className="flex h-6 w-6 items-center justify-center rounded-sm border border-study-600 bg-study-700 text-ink-dim transition-colors hover:border-amber/40 hover:text-amber"
 								onClick={() => setShowImportDialog(true)}
+								size="icon"
 								type="button"
+								variant="quiet"
 							>
-								<svg
-									aria-hidden="true"
-									className="h-3.5 w-3.5"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth={2}
-									viewBox="0 0 24 24"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<path
-										d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-									/>
-								</svg>
-							</button>
-							<button
+								<Import aria-hidden="true" className="h-4 w-4" />
+							</Button>
+							<Button
 								aria-label="导出文本"
-								className="flex h-6 w-6 items-center justify-center rounded-sm border border-study-600 bg-study-700 text-ink-dim transition-colors hover:border-amber/40 hover:text-amber"
 								onClick={() => handleExport()}
+								size="icon"
 								type="button"
+								variant="quiet"
 							>
-								<svg
-									aria-hidden="true"
-									className="h-3.5 w-3.5"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth={2}
-									viewBox="0 0 24 24"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<path
-										d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-									/>
-								</svg>
-							</button>
-							<button
+								<Download aria-hidden="true" className="h-4 w-4" />
+							</Button>
+							<Button
 								aria-label="新建章节"
-								className="flex h-6 w-6 items-center justify-center rounded-sm border border-study-600 bg-study-700 text-ink-dim transition-colors hover:border-amber/40 hover:text-amber"
 								onClick={() => setShowCreateChapter(!showCreateChapter)}
+								size="icon"
 								type="button"
+								variant="quiet"
 							>
-								<svg
-									aria-hidden="true"
-									className="h-3.5 w-3.5"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth={2}
-									viewBox="0 0 24 24"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<path
-										d="M12 5v14m-7-7h14"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-									/>
-								</svg>
-							</button>
+								<Plus aria-hidden="true" className="h-4 w-4" />
+							</Button>
 						</div>
 					</div>
 
-					{/* Inline create-chapter form */}
 					{showCreateChapter && (
-						<div className="mx-3 mb-2 rounded-sm border border-study-600 bg-study-700/50 p-2">
+						<Card className="mx-4 mb-3 p-3">
 							<input
-								className="w-full bg-transparent px-2 py-1.5 font-sans text-ink text-sm placeholder:text-ink-dim focus:outline-none"
+								className="w-full rounded border border-study-600 bg-study-700/70 px-3 py-2 font-sans text-ink text-sm placeholder:text-ink-dim/70 focus:border-amber focus:outline-none"
 								onChange={(e) => setNewChapterTitle(e.target.value)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") handleCreateChapter();
@@ -225,108 +172,107 @@ export function ProjectSidebar({
 								type="text"
 								value={newChapterTitle}
 							/>
-							<div className="mt-2 flex gap-2">
-								<button
-									className="rounded-sm bg-amber/20 px-3 py-1 font-sans text-amber text-xs transition-colors hover:bg-amber/30 disabled:opacity-40"
+							<div className="mt-3 flex gap-2">
+								<Button
 									disabled={!newChapterTitle.trim() || createChapter.isPending}
 									onClick={handleCreateChapter}
+									size="sm"
 									type="button"
 								>
 									{createChapter.isPending ? "创建中..." : "创建"}
-								</button>
-								<button
-									className="rounded-sm px-3 py-1 font-sans text-ink-dim text-xs transition-colors hover:text-ink-muted"
+								</Button>
+								<Button
 									onClick={() => setShowCreateChapter(false)}
+									size="sm"
 									type="button"
+									variant="quiet"
 								>
 									取消
-								</button>
+								</Button>
 							</div>
-						</div>
+						</Card>
 					)}
 
-					{/* Chapter list */}
-					<div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+					<div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
 						{chapters.length === 0 && !showCreateChapter && (
-							<p className="px-4 py-6 text-center font-sans text-ink-dim text-xs italic">
-								暂无章节，开始你的故事。
-							</p>
+							<div className="px-3 py-8 text-center">
+								<p className="text-ink-dim text-sm italic">
+									暂无章节，开始你的故事。
+								</p>
+							</div>
 						)}
-						{chapters.map((chapter) => {
-							const isSelected = chapter.id === selectedChapterId;
-							return (
-								<button
-									className={`group flex w-full items-start gap-3 rounded-sm px-3 py-2.5 text-left transition-colors ${
-										isSelected
-											? "border-amber border-l-2 bg-amber-glow"
-											: "border-transparent border-l-2 hover:bg-study-700/50"
-									}`}
-									key={chapter.id}
-									onClick={() => {
-										onSelectChapter(chapter.id);
-										onWorkspaceModeChange("chapters");
-									}}
-									type="button"
-								>
-									<span className="mt-0.5 font-mono text-ink-dim text-xs">
-										{chapter.order}
-									</span>
-									<div className="min-w-0 flex-1">
-										<p
-											className={`truncate font-sans text-sm leading-snug ${
-												isSelected ? "text-ink" : "text-ink-muted"
-											}`}
-										>
-											{chapter.title || `第${chapter.order}章`}
-										</p>
-										<div className="mt-1 flex items-center gap-2">
-											{statusDot(chapter.status)}
-											<span className="font-mono text-ink-dim text-xs">
-												{chapter.wordCount}字
-											</span>
+						<div className="space-y-2">
+							{chapters.map((chapter) => {
+								const isSelected = chapter.id === selectedChapterId;
+								return (
+									<button
+										className={`group flex w-full items-start gap-3 rounded border px-3 py-3 text-left transition-all duration-300 ${
+											isSelected
+												? "border-amber/60 bg-amber/10"
+												: "border-transparent bg-study-800/60 hover:border-study-500 hover:bg-study-700/60"
+										}`}
+										key={chapter.id}
+										onClick={() => {
+											onSelectChapter(chapter.id);
+											onWorkspaceModeChange("chapters");
+										}}
+										type="button"
+									>
+										<span className="mt-0.5 font-mono text-ink-dim text-xs">
+											{chapter.order}
+										</span>
+										<div className="min-w-0 flex-1">
+											<p
+												className={`truncate text-sm ${isSelected ? "text-ink" : "text-ink-muted"}`}
+											>
+												{chapter.title || `第${chapter.order}章`}
+											</p>
+											<div className="mt-1 flex items-center gap-2">
+												{statusDot(chapter.status)}
+												<span className="font-mono text-ink-dim text-xs">
+													{chapter.wordCount} 字
+												</span>
+											</div>
 										</div>
-									</div>
-								</button>
-							);
-						})}
+									</button>
+								);
+							})}
+						</div>
 					</div>
-				</div>
 
-				{/* Divider + AI Sessions section */}
-				<div className="shrink-0 border-study-600 border-t">
-					<div className="px-4 pt-4 pb-2">
-						<h2 className="font-sans font-semibold text-ink-dim text-xs uppercase tracking-wider">
+					<div className="border-study-600 border-t px-5 py-4">
+						<h2 className="mb-3 font-label text-[10px] text-ink-muted uppercase tracking-[0.28em]">
 							AI 对话
 						</h2>
-					</div>
-					<div className="max-h-[200px] overflow-y-auto px-2 pb-4">
-						{sessions.length === 0 && (
-							<p className="px-3 py-3 text-center font-sans text-ink-dim text-xs italic">
-								暂无对话
-							</p>
-						)}
-						{sessions.map((session) => {
-							const isActive = session.id === activeSessionId;
-							return (
-								<button
-									className={`flex w-full flex-col gap-0.5 rounded-sm px-3 py-2 text-left transition-colors ${
-										isActive
-											? "border-amber border-l-2 bg-amber-glow"
-											: "border-transparent border-l-2 hover:bg-study-700/50"
-									}`}
-									key={session.id}
-									onClick={() => onSelectSession(session.id)}
-									type="button"
-								>
-									<span className="truncate font-sans text-ink-muted text-xs">
-										{session.title ?? "未命名对话"}
-									</span>
-									<span className="font-mono text-ink-dim text-xs">
-										{new Date(session.updatedAt).toLocaleDateString()}
-									</span>
-								</button>
-							);
-						})}
+						<div className="max-h-[220px] space-y-2 overflow-y-auto">
+							{sessions.length === 0 && (
+								<p className="py-4 text-center text-ink-dim text-xs italic">
+									暂无对话
+								</p>
+							)}
+							{sessions.map((session) => {
+								const isActive = session.id === activeSessionId;
+								return (
+									<button
+										className={`flex w-full flex-col gap-1 rounded border px-3 py-2 text-left transition-all duration-300 ${
+											isActive
+												? "border-amber/60 bg-amber/10"
+												: "border-study-600 bg-study-700/40 hover:border-study-500 hover:bg-study-700/70"
+										}`}
+										key={session.id}
+										onClick={() => onSelectSession(session.id)}
+										type="button"
+									>
+										<span className="truncate font-sans text-ink-muted text-xs">
+											{session.title ?? "未命名对话"}
+										</span>
+										<span className="font-mono text-[10px] text-ink-dim">
+											{new Date(session.updatedAt).toLocaleDateString()}
+										</span>
+									</button>
+								);
+							})}
+						</div>
 					</div>
 				</div>
 			</aside>

@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import type { Metadata } from "next";
-import { Geist_Mono, Lora, Playfair_Display } from "next/font/google";
+import { Cormorant_Garamond, Crimson_Pro, Geist_Mono } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 
@@ -12,15 +12,15 @@ export const metadata: Metadata = {
 	icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-const playfair = Playfair_Display({
+const cormorant = Cormorant_Garamond({
 	subsets: ["latin"],
-	variable: "--font-playfair",
+	variable: "--font-cormorant",
 	display: "swap",
 });
 
-const lora = Lora({
+const crimson = Crimson_Pro({
 	subsets: ["latin"],
-	variable: "--font-lora",
+	variable: "--font-crimson",
 	display: "swap",
 });
 
@@ -35,7 +35,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<html
-			className={`${playfair.variable} ${lora.variable} ${geistMono.variable}`}
+			className={`${cormorant.variable} ${crimson.variable} ${geistMono.variable}`}
 			lang="zh-CN"
 		>
 			<body>

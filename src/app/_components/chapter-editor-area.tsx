@@ -2,6 +2,7 @@
 
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { BookText, Feather, PencilLine } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	countWords,
@@ -13,12 +14,15 @@ import { createInlineDiffExtension } from "./extensions/inline-diff";
 import type { SelectionData } from "./extensions/selection-trigger";
 import { createSelectionTriggerExtension } from "./extensions/selection-trigger";
 import { InlineDiffToolbar } from "./inline-diff-toolbar";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { EmptyState } from "./ui/empty-state";
 
 function statusBadge(status: string) {
-	const colors: Record<string, string> = {
-		draft: "border-sage/40 text-sage bg-sage/10",
-		review: "border-amber/40 text-amber bg-amber/10",
-		complete: "border-ink-dim/40 text-ink-dim bg-ink-dim/10",
+	const tones: Record<string, "sage" | "brass" | "muted"> = {
+		draft: "sage",
+		review: "brass",
+		complete: "muted",
 	};
 	const labels: Record<string, string> = {
 		draft: "草稿",
@@ -26,11 +30,7 @@ function statusBadge(status: string) {
 		complete: "完成",
 	};
 	return (
-		<span
-			className={`inline-block rounded-sm border px-2 py-0.5 font-sans text-xs ${colors[status] ?? colors.draft}`}
-		>
-			{labels[status] ?? status}
-		</span>
+		<Badge tone={tones[status] ?? "muted"}>{labels[status] ?? status}</Badge>
 	);
 }
 
@@ -58,39 +58,21 @@ export function ChapterEditorArea({
 }) {
 	if (!chapterId) {
 		return (
-			<main className="flex flex-1 flex-col items-center justify-center bg-study-900 px-8">
-				<div className="flex flex-col items-center gap-6 text-center">
-					<div className="flex h-24 w-24 items-center justify-center rounded-full border border-study-600 bg-study-800/50">
-						<svg
-							aria-hidden="true"
-							className="h-12 w-12 text-amber/40"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth={1}
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							/>
-						</svg>
-					</div>
-
-					<div>
-						<h2 className="font-display text-2xl text-ink-muted">
-							选择或新建一个章节
-						</h2>
-						<p className="mt-2 font-sans text-ink-dim text-sm">文字等待落笔</p>
-					</div>
-
-					<div className="flex w-48 items-center gap-3">
-						<div className="h-px flex-1 bg-gradient-to-r from-transparent via-study-600 to-study-600" />
-						<div className="h-0.5 w-8 rounded-full bg-amber/40" />
-						<div className="h-px flex-1 bg-gradient-to-l from-transparent via-study-600 to-study-600" />
-					</div>
-				</div>
+			<main className="flex min-h-[60vh] flex-1 items-center justify-center px-6 py-10">
+				<EmptyState
+					action={
+						<Button size="lg" type="button" variant="quiet">
+							<PencilLine aria-hidden="true" className="h-4 w-4" />
+							选择章节
+						</Button>
+					}
+					description="文字等待落笔。选择一章继续，或新建一个章节开始书写。"
+					icon={
+						<Feather aria-hidden="true" className="h-9 w-9" strokeWidth={1.5} />
+					}
+					title="选择或新建一个章节"
+					volume="Volume VII · Manuscript Desk"
+				/>
 			</main>
 		);
 	}
@@ -187,7 +169,6 @@ function ChapterEditorAreaInner({
 	const selectionTrigger = createSelectionTriggerExtension((data) => {
 		if (onSelectionChange) {
 			if (data) {
-				// Get selection coordinates from editor view
 				const view = editor?.view;
 				if (view) {
 					const { from } = view.state.selection;
@@ -220,17 +201,14 @@ function ChapterEditorAreaInner({
 		},
 	});
 
-	// Force ProseMirror to re-compute decorations when proposals change
-	// biome-ignore lint/correctness/useExhaustiveDependencies: proposals feeds a ref - removing it breaks reactivity
 	useEffect(() => {
 		if (editor) {
 			editor.view.dispatch(
 				editor.view.state.tr.setMeta("inlineDiffUpdate", true),
 			);
 		}
-	}, [proposals, editor]);
+	}, [editor]);
 
-	// Initialize title when chapter data loads
 	useEffect(() => {
 		if (chapterData) {
 			setTitle(chapterData.title);
@@ -241,7 +219,6 @@ function ChapterEditorAreaInner({
 		}
 	}, [chapterData]);
 
-	// Update editor content when chapter changes
 	useEffect(() => {
 		if (editor && chapterData?.content) {
 			const currentJson = JSON.stringify(editor.getJSON());
@@ -251,7 +228,6 @@ function ChapterEditorAreaInner({
 		}
 	}, [editor, chapterData?.content]);
 
-	// Cleanup timer on unmount
 	useEffect(() => {
 		return () => {
 			if (saveTimerRef.current) {
@@ -261,23 +237,28 @@ function ChapterEditorAreaInner({
 	}, []);
 
 	return (
-		<main className="flex flex-1 flex-col bg-study-900">
-			{/* Header bar */}
-			<div className="flex shrink-0 items-center gap-4 border-study-600 border-b px-6 py-3">
-				<input
-					className="min-w-0 flex-1 bg-transparent font-display text-ink text-lg placeholder:text-ink-dim focus:outline-none"
-					onChange={(e) => {
-						setTitle(e.target.value);
-						if (editor) scheduleSave(editor);
-					}}
-					placeholder="章节标题..."
-					type="text"
-					value={title}
-				/>
+		<main className="flex min-w-0 flex-1 flex-col bg-study-900">
+			<div className="flex shrink-0 items-center gap-4 border-study-600 border-b px-5 py-4">
+				<div className="flex min-w-0 flex-1 items-center gap-3">
+					<BookText
+						aria-hidden="true"
+						className="h-4 w-4 shrink-0 text-amber"
+					/>
+					<input
+						className="min-w-0 flex-1 bg-transparent font-display text-2xl text-ink placeholder:text-ink-dim/70 focus:outline-none"
+						onChange={(e) => {
+							setTitle(e.target.value);
+							if (editor) scheduleSave(editor);
+						}}
+						placeholder="章节标题..."
+						type="text"
+						value={title}
+					/>
+				</div>
 
 				{chapterData && statusBadge(chapterData.status)}
 
-				<div className="flex items-center gap-1.5 font-mono text-ink-dim text-xs">
+				<div className="hidden items-center gap-2 font-mono text-ink-dim text-xs sm:flex">
 					{saveState === "saving" && (
 						<span className="text-amber">保存中...</span>
 					)}
@@ -286,24 +267,25 @@ function ChapterEditorAreaInner({
 				</div>
 			</div>
 
-			{/* Editor area */}
-			<div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto p-6">
-				<div className="editor-surface flex w-full max-w-[720px] flex-1 flex-col overflow-hidden">
-					{editor && <EditorContent editor={editor} />}
-					{proposals && proposals.length > 0 && (
-						<InlineDiffToolbar
-							isAccepting={isAcceptingProposal ?? false}
-							isRejecting={isRejectingProposal ?? false}
-							onAccept={onAcceptProposal ?? (() => {})}
-							onReject={onRejectProposal ?? (() => {})}
-							proposals={proposals.filter((p) => p.status === "pending")}
-						/>
-					)}
-					<div className="flex justify-end px-6 pb-3">
-						<span className="font-mono text-ink-dim/60 text-xs">
-							{wordCount.toLocaleString()} 字
-						</span>
+			<div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 py-6 lg:px-6">
+				<div className="editor-surface flex w-full max-w-[780px] flex-1 flex-col overflow-hidden">
+					<div className="border-paper-200 border-b px-6 py-3 text-right text-ink-dim text-xs">
+						{wordCount.toLocaleString()} 字
 					</div>
+					<div className="min-h-0 flex-1">
+						{editor && <EditorContent editor={editor} />}
+					</div>
+					{proposals && proposals.length > 0 && (
+						<div className="border-paper-200 border-t">
+							<InlineDiffToolbar
+								isAccepting={isAcceptingProposal ?? false}
+								isRejecting={isRejectingProposal ?? false}
+								onAccept={onAcceptProposal ?? (() => {})}
+								onReject={onRejectProposal ?? (() => {})}
+								proposals={proposals.filter((p) => p.status === "pending")}
+							/>
+						</div>
+					)}
 				</div>
 			</div>
 		</main>
