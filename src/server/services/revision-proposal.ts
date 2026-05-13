@@ -118,9 +118,12 @@ function hasCjk(text: string) {
 	return /\p{Script=Han}/u.test(text);
 }
 
+const MIN_CJK_ORIGINAL_LENGTH = 20;
+const MIN_NON_CJK_ORIGINAL_CHARS = 80;
+
 function isSafeOriginalText(text: string) {
-	if (hasCjk(text)) return cjkCount(text) >= 20;
-	return text.replace(/\s/g, "").length >= 80;
+	if (hasCjk(text)) return cjkCount(text) >= MIN_CJK_ORIGINAL_LENGTH;
+	return text.replace(/\s/g, "").length >= MIN_NON_CJK_ORIGINAL_CHARS;
 }
 
 function countExactOccurrences(text: string, needle: string) {
