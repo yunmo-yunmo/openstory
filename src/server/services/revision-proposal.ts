@@ -402,11 +402,16 @@ export async function acceptRevisionProposal(
 				);
 			}
 
-			const tiptapResult = replaceParagraphsInTipTapDoc(
-				proposal.chapter.content,
-				proposal.originalText ?? "",
-				proposal.replacementText,
-			);
+			let tiptapResult: string | null = null;
+			try {
+				tiptapResult = replaceParagraphsInTipTapDoc(
+					proposal.chapter.content,
+					proposal.originalText ?? "",
+					proposal.replacementText,
+				);
+			} catch {
+				// Malformed JSON — fall through to plain-text path
+			}
 			if (tiptapResult) {
 				newContent = tiptapResult;
 				newWordCount = countWords(tiptapToRawText(newContent));

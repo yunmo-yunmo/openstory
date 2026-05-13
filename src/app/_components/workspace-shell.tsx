@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { api } from "~/trpc/react";
 import { ChapterEditorArea } from "./chapter-editor-area";
 import { CharactersPanel } from "./characters-panel";
 import { ChatPanel } from "./chat-panel";
@@ -15,6 +16,8 @@ import type { WorkspaceMode } from "./story-bible-types";
 import { WorldNotesPanel } from "./world-notes-panel";
 
 export function WorkspaceShell({ projectId }: { projectId: string }) {
+	const utils = api.useUtils();
+
 	const [selectedChapterId, setSelectedChapterId] = useState<string | null>(
 		null,
 	);
@@ -22,6 +25,9 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 	const [showModelServices, setShowModelServices] = useState(false);
 	const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("chapters");
 	const [editorProposals, setEditorProposals] = useState<DiffProposal[]>([]);
+	const [mutatingProposalId, setMutatingProposalId] = useState<string | null>(
+		null,
+	);
 	const [selectionData, setSelectionData] = useState<SelectionData | null>(
 		null,
 	);
@@ -33,6 +39,56 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 		operation: AIOperation;
 		selection: SelectionData;
 	} | null>(null);
+
+	const acceptMutation = api.revisionProposal.accept.useMutation({
+		onSuccess: () => {
+			setMutatingProposalId(null);
+			if (activeSessionId) {
+				void utils.revisionProposal.listBySession.invalidate({
+					sessionId: activeSessionId,
+				});
+				void utils.session.getById.invalidate({ id: activeSessionId });
+			}
+			void utils.chapter.listByProject.invalidate({ projectId });
+			if (selectedChapterId) {
+				void utils.chapter.getById.invalidate({ id: selectedChapterId });
+			}
+		},
+		onError: () => {
+			setMutatingProposalId(null);
+		},
+	});
+
+	const rejectMutation = api.revisionProposal.reject.useMutation({
+		onSuccess: () => {
+			setMutatingProposalId(null);
+			if (activeSessionId) {
+				void utils.revisionProposal.listBySession.invalidate({
+					sessionId: activeSessionId,
+				});
+				void utils.session.getById.invalidate({ id: activeSessionId });
+			}
+		},
+		onError: () => {
+			setMutatingProposalId(null);
+		},
+	});
+
+	const handleAcceptProposal = useCallback(
+		(proposalId: string) => {
+			setMutatingProposalId(proposalId);
+			acceptMutation.mutate({ id: proposalId });
+		},
+		[acceptMutation],
+	);
+
+	const handleRejectProposal = useCallback(
+		(proposalId: string) => {
+			setMutatingProposalId(proposalId);
+			rejectMutation.mutate({ id: proposalId });
+		},
+		[rejectMutation],
+	);
 
 	const handleProposalsChange = useCallback((proposals: DiffProposal[]) => {
 		setEditorProposals(proposals);
@@ -69,6 +125,14 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 		) : (
 			<ChapterEditorArea
 				chapterId={selectedChapterId}
+				isAcceptingProposal={
+					mutatingProposalId !== null && acceptMutation.isPending
+				}
+				isRejectingProposal={
+					mutatingProposalId !== null && rejectMutation.isPending
+				}
+				onAcceptProposal={handleAcceptProposal}
+				onRejectProposal={handleRejectProposal}
 				onSelectionChange={handleSelectionChange}
 				projectId={projectId}
 				proposals={editorProposals}

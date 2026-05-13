@@ -13,27 +13,19 @@ export interface DiffProposal {
 
 export const InlineDiffKey = new PluginKey("inlineDiff");
 
-export interface InlineDiffStorage {
+/**
+ * Mutable store shared between the React component and the ProseMirror plugin.
+ * The component updates this ref on each render; the plugin reads it on each
+ * decorations call. This avoids the "frozen at creation" problem with TipTap
+ * extension options.
+ */
+export type ProposalStore = {
 	proposals: DiffProposal[];
-	onAccept: (proposalId: string) => void;
-	onReject: (proposalId: string) => void;
-}
+};
 
-export function createInlineDiffExtension() {
-	return Extension.create<{
-		proposals: DiffProposal[];
-		onAccept: (id: string) => void;
-		onReject: (id: string) => void;
-	}>({
+export function createInlineDiffExtension(store: ProposalStore) {
+	return Extension.create({
 		name: "inlineDiff",
-
-		addOptions() {
-			return {
-				proposals: [],
-				onAccept: () => {},
-				onReject: () => {},
-			};
-		},
 
 		addProseMirrorPlugins() {
 			return [
@@ -41,7 +33,7 @@ export function createInlineDiffExtension() {
 					key: InlineDiffKey,
 					props: {
 						decorations: (state) => {
-							const proposals = this.options.proposals.filter(
+							const proposals = store.proposals.filter(
 								(p) => p.status === "pending",
 							);
 							if (proposals.length === 0) return DecorationSet.empty;
@@ -51,6 +43,8 @@ export function createInlineDiffExtension() {
 
 							for (const proposal of proposals) {
 								if (proposal.operation === "replace" && proposal.originalText) {
+									// Build raw text from doc to match originalText
+									// (doc.textContent strips paragraph breaks, matching single-paragraph proposals)
 									const rawText = doc.textContent;
 									const matchIndex = rawText.indexOf(proposal.originalText);
 									if (matchIndex === -1) continue;
@@ -71,7 +65,7 @@ export function createInlineDiffExtension() {
 										}),
 									);
 
-									// Inserted text: green background widget after deleted range
+									// Inserted text: green background widget
 									const insertPos = startPos.to;
 									const widget = document.createElement("span");
 									widget.className = "inline-diff-inserted";
@@ -80,7 +74,9 @@ export function createInlineDiffExtension() {
 									widget.textContent = proposal.replacementText;
 									widget.dataset.proposalId = proposal.id;
 									decorations.push(
-										Decoration.widget(insertPos, widget, { side: 1 }),
+										Decoration.widget(insertPos, widget, {
+											side: 1,
+										}),
 									);
 								} else if (proposal.operation === "append") {
 									const endPos = docEndPosition(doc);

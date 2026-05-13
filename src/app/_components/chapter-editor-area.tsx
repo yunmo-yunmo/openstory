@@ -201,11 +201,10 @@ function ChapterEditorAreaInner({
 		}
 	});
 
-	const inlineDiffExt = createInlineDiffExtension().configure({
-		proposals: proposals ?? [],
-		onAccept: onAcceptProposal ?? (() => {}),
-		onReject: onRejectProposal ?? (() => {}),
-	});
+	const proposalStore = useRef({ proposals: proposals ?? [] });
+	proposalStore.current.proposals = proposals ?? [];
+
+	const inlineDiffExt = createInlineDiffExtension(proposalStore.current);
 
 	const editor = useEditor({
 		extensions: [StarterKit, selectionTrigger, inlineDiffExt],
@@ -218,6 +217,15 @@ function ChapterEditorAreaInner({
 			scheduleSave(updatedEditor);
 		},
 	});
+
+	// Force ProseMirror to re-compute decorations when proposals change
+	useEffect(() => {
+		if (editor) {
+			editor.view.dispatch(
+				editor.view.state.tr.setMeta("inlineDiffUpdate", true),
+			);
+		}
+	}, [proposals, editor]);
 
 	// Initialize title when chapter data loads
 	useEffect(() => {

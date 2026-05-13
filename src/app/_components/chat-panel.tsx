@@ -237,44 +237,6 @@ function ChatPanelInner({
 		}
 	}, [proposalsMap, onProposalsChange]);
 
-	// Per-proposal mutation tracking (tRPC mutations are global, not scoped)
-	const [mutatingProposalId, setMutatingProposalId] = useState<string | null>(
-		null,
-	);
-	const [failedProposalId, setFailedProposalId] = useState<string | null>(null);
-
-	const acceptMutation = api.revisionProposal.accept.useMutation({
-		onSuccess: () => {
-			setMutatingProposalId(null);
-			setFailedProposalId(null);
-			void utils.revisionProposal.listBySession.invalidate({
-				sessionId: activeSessionId,
-			});
-			void utils.session.getById.invalidate({ id: activeSessionId });
-			void utils.chapter.listByProject.invalidate({ projectId });
-			if (chapterId) {
-				void utils.chapter.getById.invalidate({ id: chapterId });
-			}
-		},
-		onError: () => {
-			setMutatingProposalId(null);
-		},
-	});
-
-	const rejectMutation = api.revisionProposal.reject.useMutation({
-		onSuccess: () => {
-			setMutatingProposalId(null);
-			setFailedProposalId(null);
-			void utils.revisionProposal.listBySession.invalidate({
-				sessionId: activeSessionId,
-			});
-			void utils.session.getById.invalidate({ id: activeSessionId });
-		},
-		onError: () => {
-			setMutatingProposalId(null);
-		},
-	});
-
 	// Mutations
 	const sendMutation = api.session.send.useMutation({
 		onSuccess: () => {
@@ -400,10 +362,10 @@ function ChatPanelInner({
 			}
 
 			setStreamingMessage(null);
-			// Save both user and assistant messages via tRPC (re-send to persist)
+			// Persist messages by sending through tRPC (which saves to DB)
+			// This re-sends the user message but the tRPC send persists both user + assistant messages
 			void utils.session.getById.invalidate({ id: activeSessionId });
 			void utils.session.list.invalidate({ projectId });
-			sendMutation.mutate({ id: activeSessionId, message: trimmed });
 		} catch {
 			setStreamingMessage(null);
 			sendMutation.mutate({ id: activeSessionId, message: trimmed });
@@ -516,28 +478,7 @@ function ChatPanelInner({
 					return (
 						<div key={getMessageKey(msg) + (proposal?.status ?? "")}>
 							<MessageBubble message={msg} />
-							{proposal && (
-								<RevisionProposalCard
-									acceptError={
-										failedProposalId === proposal.id
-											? acceptMutation.error?.message
-											: undefined
-									}
-									isAccepting={mutatingProposalId === proposal.id}
-									isRejecting={mutatingProposalId === proposal.id}
-									onAccept={() => {
-										setFailedProposalId(proposal.id);
-										setMutatingProposalId(proposal.id);
-										acceptMutation.mutate({ id: proposal.id });
-									}}
-									onReject={() => {
-										setFailedProposalId(null);
-										setMutatingProposalId(proposal.id);
-										rejectMutation.mutate({ id: proposal.id });
-									}}
-									proposal={proposal}
-								/>
-							)}
+							{proposal && <RevisionProposalCard proposal={proposal} />}
 						</div>
 					);
 				})}
@@ -692,23 +633,8 @@ function MessageBubble({ message }: { message: SessionMessage }) {
 	);
 }
 
-function RevisionProposalCard({
-	proposal,
-	onAccept,
-	onReject,
-	isAccepting,
-	isRejecting,
-	acceptError,
-}: {
-	proposal: ProposalType;
-	onAccept: () => void;
-	onReject: () => void;
-	isAccepting: boolean;
-	isRejecting: boolean;
-	acceptError?: string;
-}) {
+function RevisionProposalCard({ proposal }: { proposal: ProposalType }) {
 	const isPending = proposal.status === "pending";
-	const _isMutating = isAccepting || isRejecting;
 
 	const operationLabel: Record<ProposalOperation, string> = {
 		append: "追加提案",
@@ -770,9 +696,6 @@ function RevisionProposalCard({
 				<p className="mt-1.5 font-sans text-ink-dim text-xs italic">
 					在编辑器中查看修改建议
 				</p>
-			)}
-			{acceptError && (
-				<p className="mt-1.5 font-sans text-rust text-xs">{acceptError}</p>
 			)}
 		</div>
 	);
