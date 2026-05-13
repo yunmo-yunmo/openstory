@@ -6,6 +6,7 @@ import { api } from "~/trpc/react";
 import type { DiffProposal } from "./extensions/inline-diff";
 import type { SelectionData } from "./extensions/selection-trigger";
 import type { AIOperation } from "./selection-menu";
+import { AI_OPERATION_LABELS } from "./story-bible-types";
 
 interface SessionMessage {
 	role: string;
@@ -258,15 +259,8 @@ function ChatPanelInner({
 		if (!pendingSelection || !hasUsableConfig || sendMutation.isPending) return;
 
 		if (activeSessionId) {
-			const opLabels = {
-				rewrite: "改写",
-				polish: "润色",
-				expand: "扩写",
-				shorten: "缩写",
-				continue: "续写",
-			};
 			const message =
-				opLabels[pendingSelection.operation] +
+				AI_OPERATION_LABELS[pendingSelection.operation] +
 				(pendingSelection.operation === "continue" ? "" : "选中的文字") +
 				"：" +
 				pendingSelection.selection.text.slice(0, 50) +
@@ -362,8 +356,8 @@ function ChatPanelInner({
 			}
 
 			setStreamingMessage(null);
-			// Persist messages by sending through tRPC (which saves to DB)
-			// This re-sends the user message but the tRPC send persists both user + assistant messages
+			// Messages are persisted server-side by the streaming endpoint.
+			// Refetch to pick up the saved messages.
 			void utils.session.getById.invalidate({ id: activeSessionId });
 			void utils.session.list.invalidate({ projectId });
 		} catch {

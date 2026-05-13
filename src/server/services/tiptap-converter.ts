@@ -1,11 +1,11 @@
-interface TipTapNode {
+export interface TipTapNode {
 	type: string;
 	content?: TipTapNode[];
 	text?: string;
 	marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
 }
 
-interface TipTapDoc {
+export interface TipTapDoc {
 	type: "doc";
 	content: TipTapNode[];
 }

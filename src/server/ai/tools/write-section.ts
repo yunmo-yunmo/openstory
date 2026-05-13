@@ -2,25 +2,13 @@ import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
 import { plainTextToTipTap } from "../../services/tiptap-converter";
+import type { TipTapDoc, TipTapNode } from "../../services/tiptap-converter";
 import type { ToolContext } from "./data-access";
 import {
 	createSnapshot,
 	getChapterContent,
 	updateChapterContent,
 } from "./data-access";
-
-/** TipTap JSON node structure (minimal types for local use). */
-interface TipTapNode {
-	type: string;
-	content?: TipTapNode[];
-	text?: string;
-	marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
-}
-
-interface TipTapDoc {
-	type: "doc";
-	content: TipTapNode[];
-}
 
 /**
  * Convert plain text into an array of TipTap paragraph nodes.

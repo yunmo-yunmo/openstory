@@ -12,6 +12,7 @@ import {
 	validateRevisionProposalDraft,
 } from "~/server/services/revision-proposal";
 import { tiptapToPlainText } from "~/server/services/tiptap-converter";
+import { AI_OPERATION_LABELS } from "~/app/_components/story-bible-types";
 
 export const sessionRouter = createTRPCRouter({
 	create: protectedProcedure
@@ -125,14 +126,7 @@ export const sessionRouter = createTRPCRouter({
 			let userContent = input.message;
 			if (input.selectionContext) {
 				const sel = input.selectionContext;
-				const opLabels: Record<string, string> = {
-					rewrite: "改写",
-					polish: "润色",
-					expand: "扩写",
-					shorten: "缩写",
-					continue: "续写",
-				};
-				userContent = `${opLabels[sel.operation]}${sel.operation === "continue" ? "" : "选中的文字"}：${sel.selectedText}`;
+				userContent = `${AI_OPERATION_LABELS[sel.operation]}${sel.operation === "continue" ? "" : "选中的文字"}：${sel.selectedText}`;
 			}
 			const userMessage = { role: "user" as const, content: userContent };
 

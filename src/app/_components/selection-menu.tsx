@@ -1,16 +1,10 @@
 "use client";
 
+import type { AIOperation } from "./story-bible-types";
+import { AI_OPERATIONS } from "./story-bible-types";
 import type { SelectionData } from "./extensions/selection-trigger";
 
-const AI_OPERATIONS = [
-	{ key: "rewrite", label: "改写" },
-	{ key: "polish", label: "润色" },
-	{ key: "expand", label: "扩写" },
-	{ key: "shorten", label: "缩写" },
-	{ key: "continue", label: "续写" },
-] as const;
-
-export type AIOperation = (typeof AI_OPERATIONS)[number]["key"];
+export type { AIOperation };
 
 export function SelectionMenu({
 	selection,

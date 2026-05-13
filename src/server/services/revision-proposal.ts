@@ -7,6 +7,7 @@ import {
 	plainTextToTipTap,
 	tiptapToPlainText,
 	tiptapToRawText,
+	type TipTapNode,
 } from "./tiptap-converter";
 
 export const proposalStatusSchema = z.enum([
@@ -181,13 +182,6 @@ interface TipTapDoc {
 interface TipTapParagraph {
 	type: "paragraph";
 	content: TipTapNode[];
-}
-
-interface TipTapNode {
-	type: string;
-	text?: string;
-	marks?: Array<{ type: string }>;
-	content?: TipTapNode[];
 }
 
 export function appendToTipTapDoc(
