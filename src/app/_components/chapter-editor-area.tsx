@@ -210,6 +210,7 @@ function ChapterEditorAreaInner({
 	const editor = useEditor({
 		extensions: [StarterKit, selectionTrigger, inlineDiffExt],
 		content: chapterData?.content ? JSON.parse(chapterData.content) : "",
+		immediatelyRender: false,
 		onUpdate: ({ editor: updatedEditor }) => {
 			const plainText = tiptapToPlainText(
 				JSON.stringify(updatedEditor.getJSON()),
@@ -233,6 +234,8 @@ function ChapterEditorAreaInner({
 	useEffect(() => {
 		if (chapterData) {
 			setTitle(chapterData.title);
+			const plainText = tiptapToPlainText(chapterData.content);
+			setWordCount(countWords(plainText));
 			setSaveState("idle");
 			setLastSaved(null);
 		}

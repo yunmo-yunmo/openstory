@@ -1,14 +1,16 @@
 import { TRPCError } from "@trpc/server";
 import type { ModelMessage } from "ai";
 import { z } from "zod";
-import { AI_OPERATION_LABELS } from "~/app/_components/story-bible-types";
+import {
+	AI_OPERATION_LABELS,
+	hasRevisionEditIntent,
+} from "~/app/_components/story-bible-types";
 import { assembleContext } from "~/server/ai/context-manager";
 import { createToolRegistry } from "~/server/ai/tools/registry";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createLLMClient } from "~/server/llm/client";
 import {
 	hashChapterContent,
-	hasRevisionEditIntent,
 	revisionProposalDraftSchema,
 	validateRevisionProposalDraft,
 } from "~/server/services/revision-proposal";
