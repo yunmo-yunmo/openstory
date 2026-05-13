@@ -1,12 +1,12 @@
-# AGENTS.md
+# CLAUDE.md
 
-This file provides guidance to coding agents (Claude, GPT, etc.) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Stack
 
 - **Framework:** Next.js 15 (App Router, React 19)
 - **API layer:** tRPC v11 with `superjson` transformer
-- **Database:** SQLite via Prisma ORM (`@prisma/client`)
+- **Database:** SQLite via Prisma ORM (client output to `generated/prisma/`)
 - **Auth:** NextAuth.js v5 (beta) with Discord OAuth and optional local user mode
 - **Styling:** Tailwind CSS v4 via `@tailwindcss/postcss`
 - **AI:** Vercel AI SDK (`ai` v6 + `@ai-sdk/anthropic` + `@ai-sdk/openai`)
@@ -249,6 +249,10 @@ Editor extensions in `src/app/_components/extensions/`:
 - `selection-trigger.ts`: ProseMirror plugin that detects text selection and reports context for AI actions
 - `text-position-mapper.ts`: paragraph-aware text position mapping for cross-paragraph diff matching
 
+Route Handlers:
+
+- `src/app/api/chat/stream/route.ts`: streaming AI chat endpoint using `llmClient.stream`, persists messages after stream completion
+
 Both pages use `<WorkspaceErrorBoundary>` + `<Suspense>` wrapping.
 
 ## Critical Conventions
@@ -264,16 +268,47 @@ Both pages use `<WorkspaceErrorBoundary>` + `<Suspense>` wrapping.
 - LLM runtime resolves active DB config before `.env` fallback.
 - OpenAI-compatible providers use API key + base URL + model.
 
+### TypeScript strict mode
+
+`tsconfig.json` enables `noUncheckedIndexedAccess` and `verbatimModuleSyntax`. This means:
+- Array/object bracket access returns `T | undefined` — always null-check or use `!` when you're certain
+- Type-only imports must use `import type { ... }` syntax
+
 ### File conventions
 
 - Components under `src/app/_components/` (private, not routes)
 - `src/server/` modules use `import "server-only"` to prevent client-side imports
 - Exception: `tiptap-converter.ts` omits `server-only` because client components import it
 - Exception: `story-bible-types.ts` in `_components/` is imported by both client and server code (no `server-only`)
+- Test files are co-located next to source (e.g., `routers/llm-config.test.ts` alongside `llm-config.ts`)
+
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+
+Available gstack skills: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/setup-gbrain`, `/retro`, `/investigate`, `/document-release`, `/codex`, `/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`, `/learn`.
 
 ## Documentation
 
 - `README.md`: setup, runtime notes, project overview
 - `docs/api.md`: current tRPC API reference
-- `CLAUDE.md`: Claude Code specific guidance (synced with this file)
+- `AGENTS.md`: guidance for other coding agents (synced with this file)
 - `docs/superpowers/specs/2026-05-08-openstory-ai-novel-tool-design.md`: current AI system design
+
+## Skill routing
+
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+
+Key routing rules:
+- Product ideas/brainstorming → invoke /office-hours
+- Strategy/scope → invoke /plan-ceo-review
+- Architecture → invoke /plan-eng-review
+- Design system/plan review → invoke /design-consultation or /plan-design-review
+- Full review pipeline → invoke /autoplan
+- Bugs/errors → invoke /investigate
+- QA/testing site behavior → invoke /qa or /qa-only
+- Code review/diff check → invoke /review
+- Visual polish → invoke /design-review
+- Ship/deploy/PR → invoke /ship or /land-and-deploy
+- Save progress → invoke /context-save
+- Resume context → invoke /context-restore

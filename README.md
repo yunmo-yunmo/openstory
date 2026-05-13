@@ -94,6 +94,8 @@ npm test -- src/server/services/encryption.test.ts # Single test file
 
 Inside a project workspace, the left sidebar switches between chapter editing, characters, outline, and world notes. Character fields can be cleared explicitly, outline parent/chapter references are project-scoped, and world-note text is stored as TipTap JSON. AI chat context includes the current chapter as plain text plus outline, character, and world-note summaries.
 
+The chapter editor supports selection-based AI actions: select text to trigger rewrite, polish, expand, shorten, or continue operations. AI revision proposals render as inline diffs in the editor with accept/reject controls. Chat responses stream in real time.
+
 ## Project Layout
 
 ```text
@@ -110,7 +112,7 @@ docs/api.md              # tRPC API reference
 
 - `~/` maps to `./src/`.
 - Chapter and world-note content is stored as TipTap JSON, not plain text.
-- `src/server/services/tiptap-converter.ts` is the only module that should understand TipTap internals.
-- Server-only modules use `import "server-only"`, except shared converter code used by client components.
+- `src/server/services/tiptap-converter.ts` is the only module that should understand TipTap JSON internals.
+- Server-only modules use `import "server-only"`, except shared converter code and `story-bible-types.ts` used by client components.
 - AI tool data access must always scope entity IDs by `projectId`.
 - Existing AI tool updates should filter by `{ id, projectId }`; never reassign ownership by overwriting `projectId`.

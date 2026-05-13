@@ -552,20 +552,30 @@ Mutation.
 Input:
 
 ```typescript
-{ id: string; message: string }
+{
+  id: string;
+  message: string;
+  selectionContext?: {
+    selectedText: string;
+    beforeContext: string;
+    afterContext: string;
+    operation: "rewrite" | "polish" | "expand" | "shorten" | "continue";
+  };
+}
 ```
 
-Sends a user message to the AI assistant.
+Sends a user message to the AI assistant. `selectionContext` is provided when the user triggers an AI action from text selection in the editor.
 
 Internal flow:
 
 1. Load the session scoped to the current user.
 2. Parse and append the user message.
-3. If the session has a `chapterId`, call `assembleContext({ db, projectId, currentChapterId })`.
-4. Create the LLM client and AI tool registry.
-5. Call `llmClient.generate({ task: "chat", tools, maxTokens: 4096, temperature: 0.7 })`.
-6. Store assistant text plus any tool calls/results in `AISession.messages`.
-7. Use the first user message as the session title if no title exists.
+3. If the message has edit intent (or `selectionContext` is provided) and the session has a `chapterId`, attempt structured revision proposal via `llmClient.generateObject` with `revisionProposalDraftSchema`. If successful, create a pending `ChapterRevisionProposal` and return the summary with `proposalId`.
+4. Otherwise, if the session has a `chapterId`, call `assembleContext({ db, projectId, currentChapterId })`.
+5. Create the LLM client and AI tool registry.
+6. Call `llmClient.generate({ task: "chat", tools, maxTokens: 4096, temperature: 0.7 })`.
+7. Store assistant text plus any tool calls/results in `AISession.messages`.
+8. Use the first user message as the session title if no title exists.
 
 Output:
 
