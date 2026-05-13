@@ -47,9 +47,7 @@ export function createInlineDiffExtension(store: ProposalStore) {
 
 							for (const proposal of proposals) {
 								if (proposal.operation === "replace" && proposal.originalText) {
-									// Build raw text from doc to match originalText
-									// (doc.textContent strips paragraph breaks, matching single-paragraph proposals)
-									const rawText = doc.textContent;
+									const rawText = docToRawText(doc);
 									const matchIndex = rawText.indexOf(proposal.originalText);
 									if (matchIndex === -1) continue;
 
