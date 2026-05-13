@@ -3,6 +3,8 @@
 import type { SelectionData } from "./extensions/selection-trigger";
 import type { AIOperation } from "./story-bible-types";
 import { AI_OPERATIONS } from "./story-bible-types";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 export type { AIOperation };
 
@@ -18,21 +20,22 @@ export function SelectionMenu({
 	if (!position) return null;
 
 	return (
-		<div
-			className="fixed z-50 flex items-center gap-1 rounded-sm border border-study-600 bg-study-800 px-1.5 py-1 shadow-lg"
+		<Card
+			className="fixed z-50 flex items-center gap-1 p-1"
 			style={{ top: position.top - 45, left: position.left }}
 		>
 			{AI_OPERATIONS.map((op) => (
-				<button
-					className="rounded-sm px-2 py-1 font-sans text-ink-muted text-xs transition-colors hover:bg-study-700 hover:text-ink"
+				<Button
 					key={op.key}
 					onClick={() => onAction(op.key, selection)}
+					size="sm"
 					title={op.label}
 					type="button"
+					variant="quiet"
 				>
 					{op.label}
-				</button>
+				</Button>
 			))}
-		</div>
+		</Card>
 	);
 }

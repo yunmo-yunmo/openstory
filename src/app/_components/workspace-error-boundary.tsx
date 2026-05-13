@@ -1,6 +1,9 @@
 "use client";
 
 import { Component } from "react";
+import { RefreshCcw } from "lucide-react";
+import { Button } from "./ui/button";
+import { EmptyState } from "./ui/empty-state";
 
 interface Props {
 	children: React.ReactNode;
@@ -24,20 +27,18 @@ export class WorkspaceErrorBoundary extends Component<Props, State> {
 	render() {
 		if (this.state.hasError) {
 			return (
-				<div className="flex h-screen items-center justify-center bg-study-900 px-8">
-					<div className="flex flex-col items-center gap-4 text-center">
-						<p className="font-display text-ink-muted text-xl">出了点问题</p>
-						<p className="font-sans text-ink-dim text-sm">
-							工作区遇到了错误，请刷新页面。
-						</p>
-						<button
-							className="mt-2 rounded-sm border border-amber/40 bg-amber/10 px-5 py-2 font-sans text-amber text-sm transition-colors hover:border-amber hover:bg-amber/20"
-							onClick={() => window.location.reload()}
-							type="button"
-						>
-							刷新
-						</button>
-					</div>
+				<div className="flex min-h-screen items-center justify-center px-6">
+					<EmptyState
+						action={
+							<Button onClick={() => window.location.reload()} size="lg">
+								<RefreshCcw aria-hidden="true" className="h-4 w-4" />
+								刷新页面
+							</Button>
+						}
+						description="工作区遇到了错误，请刷新页面。"
+						title="出了点问题"
+						volume="Volume V · Fault Registry"
+					/>
 				</div>
 			);
 		}

@@ -140,7 +140,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 		);
 
 	return (
-		<div className="flex h-screen bg-study-900">
+		<div className="flex min-h-screen flex-col bg-study-900 lg:grid lg:grid-cols-[280px_minmax(0,1fr)_380px]">
 			<ProjectSidebar
 				activeSessionId={activeSessionId}
 				onSelectChapter={setSelectedChapterId}

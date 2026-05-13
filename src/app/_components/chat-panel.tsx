@@ -1,5 +1,6 @@
 "use client";
 
+import { MessageSquarePlus, Send, Sparkles, TriangleAlert, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import type { DiffProposal } from "./extensions/inline-diff";
@@ -9,6 +10,9 @@ import {
 	AI_OPERATION_LABELS,
 	hasRevisionEditIntent,
 } from "./story-bible-types";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 interface SessionMessage {
 	role: string;
@@ -78,89 +82,46 @@ export function ChatPanel({
 		});
 	}, [projectId, chapterId, createSessionMutation]);
 
-	// State 1: No chapter selected
 	if (!chapterId) {
 		return (
-			<aside className="flex w-[380px] shrink-0 flex-col border-study-600 border-l bg-study-800">
+			<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-l">
 				<div className="flex flex-1 items-center justify-center px-6">
-					<div className="flex flex-col items-center gap-3 text-center">
-						<svg
-							aria-hidden="true"
-							className="h-10 w-10 text-ink-dim"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth={1.5}
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							/>
-						</svg>
-						<p className="font-sans text-ink-dim text-sm">打开一个章节开始</p>
-					</div>
-				</div>
-			</aside>
-		);
-	}
-
-	// State 2: Chapter selected, but no active session
-	if (!activeSessionId) {
-		return (
-			<aside className="flex w-[380px] shrink-0 flex-col border-study-600 border-l bg-study-800">
-				<div className="flex flex-1 items-center justify-center px-6">
-					<div className="flex flex-col items-center gap-4 text-center">
-						<svg
-							aria-hidden="true"
-							className="h-12 w-12 text-amber/30"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth={1}
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-						</svg>
+					<div className="flex max-w-xs flex-col items-center gap-4 text-center">
+						<Sparkles aria-hidden="true" className="h-10 w-10 text-amber" />
 						<div>
-							<p className="font-sans text-ink-muted text-sm">
-								与 AI 写作助手开始对话
-							</p>
-							<p className="mt-1 font-sans text-ink-dim text-xs">
-								讨论灵感、获取反馈、寻求建议
+							<p className="font-display text-2xl text-ink">打开一个章节开始</p>
+							<p className="mt-2 text-ink-dim text-sm leading-relaxed">
+								先在中间的书页里选中一章，再让助手进入对话。
 							</p>
 						</div>
-						<button
-							className="inline-flex items-center gap-2 rounded-sm border border-amber/40 bg-amber/10 px-5 py-2.5 font-sans text-amber text-sm transition-all duration-300 hover:border-amber hover:bg-amber/20 hover:shadow-[0_0_20px_var(--color-amber-glow)]"
-							disabled={createSessionMutation.isPending}
-							onClick={handleNewChat}
-							type="button"
-						>
-							<svg
-								aria-hidden="true"
-								className="h-4 w-4"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth={2}
-								viewBox="0 0 24 24"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M12 5v14m-7-7h14"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-							</svg>
-							{createSessionMutation.isPending ? "创建中..." : "新对话"}
-						</button>
 					</div>
 				</div>
 			</aside>
 		);
 	}
 
-	// State 3: Active session
+	if (!activeSessionId) {
+		return (
+			<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-l">
+				<div className="flex flex-1 items-center justify-center px-6">
+					<div className="flex max-w-xs flex-col items-center gap-4 text-center">
+						<MessageSquarePlus aria-hidden="true" className="h-12 w-12 text-amber/70" />
+						<div>
+							<p className="font-display text-2xl text-ink">与 AI 写作助手开始对话</p>
+							<p className="mt-2 text-ink-dim text-sm leading-relaxed">
+								讨论灵感、获取反馈、寻求建议。
+							</p>
+						</div>
+						<Button disabled={createSessionMutation.isPending} onClick={handleNewChat} size="lg" type="button">
+							<Send aria-hidden="true" className="h-4 w-4" />
+							{createSessionMutation.isPending ? "创建中..." : "新对话"}
+						</Button>
+					</div>
+				</div>
+			</aside>
+		);
+	}
+
 	return (
 		<ChatPanelInner
 			activeSessionId={activeSessionId}
@@ -200,12 +161,9 @@ function ChatPanelInner({
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	const utils = api.useUtils();
-
-	// Check model config status
 	const [modelStatus] = api.llmConfig.status.useSuspenseQuery();
 	const hasUsableConfig = modelStatus.hasUsableConfig;
 
-	// Load active session messages
 	const [sessionData] = api.session.getById.useSuspenseQuery({
 		id: activeSessionId,
 	});
@@ -214,7 +172,6 @@ function ChatPanelInner({
 		? (sessionData.messages as SessionMessage[])
 		: [];
 
-	// Revision proposals
 	const { data: proposalsData } = api.revisionProposal.listBySession.useQuery(
 		{ sessionId: activeSessionId },
 		{ enabled: !!activeSessionId },
@@ -223,17 +180,15 @@ function ChatPanelInner({
 	const proposalsMap = useMemo(() => {
 		const map = new Map<string, ProposalType>();
 		for (const raw of proposalsData ?? []) {
-			const p: ProposalType = {
+			map.set(raw.id, {
 				...raw,
 				status: raw.status as ProposalStatus,
 				operation: raw.operation as ProposalOperation,
-			};
-			map.set(p.id, p);
+			});
 		}
 		return map;
 	}, [proposalsData]);
 
-	// Propagate proposals to editor for inline diff
 	useEffect(() => {
 		if (onProposalsChange) {
 			const pending = Array.from(proposalsMap.values()) as DiffProposal[];
@@ -241,7 +196,6 @@ function ChatPanelInner({
 		}
 	}, [proposalsMap, onProposalsChange]);
 
-	// Mutations
 	const sendMutation = api.session.send.useMutation({
 		onSuccess: () => {
 			setInput("");
@@ -252,12 +206,10 @@ function ChatPanelInner({
 
 	const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
 
-	// Auto-scroll to bottom on new messages
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
 
-	// Auto-send when pendingSelection arrives (from editor selection menu)
 	useEffect(() => {
 		if (!pendingSelection || !hasUsableConfig || sendMutation.isPending) return;
 
@@ -292,7 +244,6 @@ function ChatPanelInner({
 		chapterId,
 	]);
 
-	// Auto-resize textarea
 	const adjustTextareaHeight = useCallback(() => {
 		const ta = textareaRef.current;
 		if (!ta) return;
@@ -314,18 +265,15 @@ function ChatPanelInner({
 		)
 			return;
 
-		// Check if this is an edit-intent message (revision proposal path)
 		if (hasRevisionEditIntent(trimmed)) {
 			sendMutation.mutate({ id: activeSessionId, message: trimmed });
 			return;
 		}
 
-		// Streaming path for general chat
 		setInput("");
 		setStreamingMessage("");
 
 		try {
-			// Build full message history for the API
 			const allMessages = [
 				...(sessionData?.messages ?? []),
 				{ role: "user", content: trimmed },
@@ -359,8 +307,6 @@ function ChatPanelInner({
 			}
 
 			setStreamingMessage(null);
-			// Messages are persisted server-side by the streaming endpoint.
-			// Refetch to pick up the saved messages.
 			void utils.session.getById.invalidate({ id: activeSessionId });
 			void utils.session.list.invalidate({ projectId });
 		} catch {
@@ -389,83 +335,48 @@ function ChatPanelInner({
 	);
 
 	return (
-		<aside className="flex w-[380px] shrink-0 flex-col border-study-600 border-l bg-study-800">
-			{/* Header */}
-			<div className="flex shrink-0 items-center gap-3 border-study-600 border-b px-4 py-3">
-				<div className="min-w-0 flex-1">
-					<p className="truncate font-sans text-ink text-sm">
+		<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-l">
+			<div className="flex shrink-0 items-center justify-between gap-3 border-study-600 border-b px-5 py-4">
+				<div className="min-w-0">
+					<p className="truncate font-display text-xl text-ink">
 						{sessionData?.title ?? "新对话"}
 					</p>
-					<p className="font-mono text-ink-dim text-xs">已关联当前章节</p>
+					<p className="font-mono text-[10px] text-ink-dim uppercase tracking-[0.2em]">
+						已关联当前章节
+					</p>
 				</div>
-				<button
-					aria-label="新对话"
-					className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-ink-dim transition-colors hover:bg-study-700 hover:text-ink-muted"
-					onClick={() => onSessionChange(null)}
-					type="button"
-				>
-					<svg
-						aria-hidden="true"
-						className="h-4 w-4"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth={2}
-						viewBox="0 0 24 24"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<path
-							d="M12 5v14m-7-7h14"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						/>
-					</svg>
-				</button>
+				<Button aria-label="新对话" onClick={() => onSessionChange(null)} size="icon" type="button" variant="quiet">
+					<Send aria-hidden="true" className="h-4 w-4 rotate-45" />
+				</Button>
 			</div>
 
-			{/* Model config warning */}
 			{!hasUsableConfig && (
-				<div className="shrink-0 border-amber/30 border-b bg-amber/5 px-4 py-3">
-					<div className="flex flex-col gap-2">
+				<div className="border-amber/30 border-b bg-amber/5 px-5 py-4">
+					<div className="flex flex-col gap-3">
 						<div className="flex items-center gap-2">
-							<svg
-								aria-hidden="true"
-								className="h-4 w-4 shrink-0 text-amber"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth={1.5}
-								viewBox="0 0 24 24"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-							</svg>
-							<p className="font-sans text-amber text-xs">未配置模型服务</p>
+							<TriangleAlert aria-hidden="true" className="h-4 w-4 text-amber" />
+							<p className="font-label text-[10px] uppercase tracking-[0.24em] text-amber">
+								未配置模型服务
+							</p>
 						</div>
-						<p className="font-sans text-ink-dim text-xs leading-relaxed">
+						<p className="text-ink-dim text-xs leading-relaxed">
 							配置 AI 提供商后即可开始与写作助手对话。
 						</p>
 						{onOpenModelServices && (
-							<button
-								className="inline-flex w-fit items-center gap-1.5 rounded-sm border border-amber/40 bg-amber/10 px-3 py-1.5 font-sans text-amber text-xs transition-colors hover:border-amber hover:bg-amber/20"
-								onClick={onOpenModelServices}
-								type="button"
-							>
+							<Button onClick={onOpenModelServices} size="sm" type="button" variant="secondary">
+								<Wand2 aria-hidden="true" className="h-4 w-4" />
 								配置模型服务
-							</button>
+							</Button>
 						)}
 					</div>
 				</div>
 			)}
 
-			{/* Message list */}
-			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+			<div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
 				{messages.length === 0 && !sendMutation.isPending && (
-					<p className="py-8 text-center font-sans text-ink-dim text-xs italic">
-						与助手分享你的第一个想法
-					</p>
+					<div className="py-10 text-center">
+						<p className="text-ink-dim text-xs italic">与助手分享你的第一个想法</p>
+					</div>
 				)}
 
 				{messages.map((msg) => {
@@ -480,38 +391,32 @@ function ChatPanelInner({
 					);
 				})}
 
-				{/* Thinking indicator */}
 				{sendMutation.isPending && (
-					<div className="mb-3 flex items-center gap-1.5 rounded-sm bg-study-700/80 px-4 py-3">
-						<span className="font-sans text-ink-muted text-sm">思考中</span>
-						<span className="flex gap-0.5 pt-0.5">
-							<span className="h-1 w-1 animate-pulse rounded-full bg-amber" />
-							<span
-								className="h-1 w-1 animate-pulse rounded-full bg-amber"
-								style={{ animationDelay: "0.15s" }}
-							/>
-							<span
-								className="h-1 w-1 animate-pulse rounded-full bg-amber"
-								style={{ animationDelay: "0.3s" }}
-							/>
-						</span>
-					</div>
+					<Card className="mb-3 border-amber/30 bg-amber/5 px-4 py-3">
+						<div className="flex items-center gap-2">
+							<span className="text-ink-muted text-sm">思考中</span>
+							<span className="flex gap-0.5 pt-0.5">
+								<span className="h-1 w-1 animate-pulse rounded-full bg-amber" />
+								<span className="h-1 w-1 animate-pulse rounded-full bg-amber" style={{ animationDelay: "0.15s" }} />
+								<span className="h-1 w-1 animate-pulse rounded-full bg-amber" style={{ animationDelay: "0.3s" }} />
+							</span>
+						</div>
+					</Card>
 				)}
 
 				{sendMutation.error && (
-					<div className="mb-3 rounded-sm border border-rust/30 bg-rust/10 px-4 py-2 font-sans text-rust text-xs">
+					<Card className="mb-3 border-rust/30 bg-rust/10 px-4 py-3 text-rust-light text-xs">
 						{sendMutation.error.message ?? "发送失败"}
-					</div>
+					</Card>
 				)}
 
 				<div ref={messagesEndRef} />
 			</div>
 
-			{/* Input area */}
-			<div className="shrink-0 border-study-600 border-t p-3">
+			<div className="shrink-0 border-study-600 border-t p-4">
 				<div className="flex items-end gap-2">
 					<textarea
-						className="max-h-[120px] min-h-[40px] flex-1 resize-none rounded-sm border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm placeholder:text-ink-dim focus:border-amber/50 focus:outline-none focus:ring-1 focus:ring-amber/30 disabled:cursor-not-allowed disabled:opacity-50"
+						className="max-h-[120px] min-h-[44px] flex-1 resize-none rounded border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm placeholder:text-ink-dim/70 focus:border-amber focus:outline-none focus:ring-2 focus:ring-amber/20 disabled:cursor-not-allowed disabled:opacity-50"
 						disabled={!hasUsableConfig}
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={handleKeyDown}
@@ -524,35 +429,15 @@ function ChatPanelInner({
 						rows={1}
 						value={input}
 					/>
-					<button
+					<Button
 						aria-label="发送消息"
-						className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border transition-all ${
-							input.trim() && !sendMutation.isPending && hasUsableConfig
-								? "border-amber/40 bg-amber/10 text-amber hover:border-amber hover:bg-amber/20"
-								: "border-study-600 bg-study-700 text-ink-dim"
-						}`}
-						disabled={
-							!input.trim() || sendMutation.isPending || !hasUsableConfig
-						}
+						disabled={!input.trim() || sendMutation.isPending || !hasUsableConfig}
 						onClick={handleSend}
+						size="icon"
 						type="button"
 					>
-						<svg
-							aria-hidden="true"
-							className="h-4 w-4"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth={2}
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d="M12 19V5m-7 7l7-7 7 7"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							/>
-						</svg>
-					</button>
+						<Send aria-hidden="true" className="h-4 w-4" />
+					</Button>
 				</div>
 			</div>
 		</aside>
@@ -576,18 +461,16 @@ function MessageBubble({ message }: { message: SessionMessage }) {
 	return (
 		<div className={`mb-3 flex ${isUser ? "justify-end" : "justify-start"}`}>
 			<div
-				className={`max-w-[90%] rounded-sm px-4 py-2.5 font-sans text-sm leading-relaxed ${
+				className={`max-w-[90%] rounded border px-4 py-3 text-sm leading-relaxed ${
 					isUser
-						? "bg-study-700 text-ink"
-						: "border border-study-600/50 bg-study-700/60 text-ink"
+						? "border-amber/30 bg-amber/10 text-ink"
+						: "border-study-600 bg-study-700/60 text-ink"
 				}`}
 			>
-				{/* Message content */}
 				<p className="whitespace-pre-wrap">{message.content}</p>
 
-				{/* Tool calls */}
 				{hasToolCalls && (
-					<div className="mt-2 border-study-600 border-t pt-2">
+					<div className="mt-3 border-study-600 border-t pt-2">
 						<button
 							className="flex items-center gap-1.5 font-mono text-amber text-xs transition-colors hover:text-amber-light"
 							onClick={() => setShowTools(!showTools)}
@@ -602,19 +485,15 @@ function MessageBubble({ message }: { message: SessionMessage }) {
 								viewBox="0 0 24 24"
 								xmlns="http://www.w3.org/2000/svg"
 							>
-								<path
-									d="M9 5l7 7-7 7"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
+								<path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
 							</svg>
 							使用工具：{message.toolCalls?.map((tc) => tc.name).join(", ")}
 						</button>
 						{showTools && (
 							<div className="mt-2 space-y-1.5">
-								{message.toolCalls?.map((tc, _idx) => (
+								{message.toolCalls?.map((tc) => (
 									<div
-										className="rounded-sm bg-study-800 px-2.5 py-1.5 font-mono text-ink-dim text-xs"
+										className="rounded border border-study-600 bg-study-800 px-2.5 py-1.5 font-mono text-ink-dim text-xs"
 										key={`${tc.name}-${JSON.stringify(tc.args)}`}
 									>
 										<span className="text-amber">{tc.name}</span>(
@@ -645,14 +524,13 @@ function RevisionProposalCard({ proposal }: { proposal: ProposalType }) {
 		expired: "已过期",
 	};
 
-	const statusColor: Record<ProposalStatus, string> = {
-		pending: "text-amber",
-		accepted: "text-sage",
-		rejected: "text-rust",
-		expired: "text-ink-dim",
+	const statusTone: Record<ProposalStatus, "brass" | "sage" | "danger" | "muted"> = {
+		pending: "brass",
+		accepted: "sage",
+		rejected: "danger",
+		expired: "muted",
 	};
 
-	// Build preview text
 	let preview: string | null = null;
 	if (proposal.operation === "replace") {
 		const source = proposal.targetHint ?? proposal.originalText;
@@ -665,35 +543,14 @@ function RevisionProposalCard({ proposal }: { proposal: ProposalType }) {
 	}
 
 	return (
-		<div className="mb-3 ml-0 border-amber/40 border-l-2 bg-study-700/40 px-3 py-2.5">
-			{/* Header: operation badge + status badge */}
-			<div className="mb-1.5 flex items-center gap-2">
-				<span className="rounded-sm bg-amber/15 px-1.5 py-0.5 font-sans text-amber text-xs">
-					{operationLabel[proposal.operation]}
-				</span>
-				<span className={`font-sans text-xs ${statusColor[proposal.status]}`}>
-					{statusLabel[proposal.status]}
-				</span>
+		<Card className="mb-3 border-l-2 border-l-amber/60 px-3 py-3">
+			<div className="mb-2 flex items-center gap-2">
+				<Badge tone={statusTone[proposal.status]}>{operationLabel[proposal.operation]}</Badge>
+				<Badge tone="muted">{statusLabel[proposal.status]}</Badge>
 			</div>
-
-			{/* Instruction */}
-			<p className="font-sans text-ink-muted text-sm leading-relaxed">
-				{proposal.instruction}
-			</p>
-
-			{/* Preview for replace */}
-			{preview && (
-				<p className="mt-1.5 font-mono text-ink-dim text-xs italic">
-					{preview}
-				</p>
-			)}
-
-			{/* Pending hint — inline diff in editor handles accept/reject */}
-			{isPending && (
-				<p className="mt-1.5 font-sans text-ink-dim text-xs italic">
-					在编辑器中查看修改建议
-				</p>
-			)}
-		</div>
+			<p className="text-ink-muted text-sm leading-relaxed">{proposal.instruction}</p>
+			{preview && <p className="mt-2 font-mono text-ink-dim text-xs italic">{preview}</p>}
+			{isPending && <p className="mt-2 text-ink-dim text-xs italic">在编辑器中查看修改建议</p>}
+		</Card>
 	);
 }
