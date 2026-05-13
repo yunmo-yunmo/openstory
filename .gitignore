@@ -48,7 +48,7 @@ yarn-error.log*
 # local agent/tool state
 /.claude/
 /.superpowers/
-/docs/superpowers/
+/docs/superpowers/plans/
 /.worktrees/
 /CLAUDE.md
 /Coding Guidelines.md
