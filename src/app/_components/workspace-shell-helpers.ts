@@ -13,12 +13,14 @@ export function nextStateForChapterSelection({
 export function nextStateForSessionSelection({
 	sessionId,
 	sessionChapterId,
+	currentChapterId,
 }: {
 	sessionId: string;
 	sessionChapterId: string | null;
+	currentChapterId: string | null;
 }) {
 	return {
 		activeSessionId: sessionId,
-		selectedChapterId: sessionChapterId,
+		selectedChapterId: sessionChapterId ?? currentChapterId,
 	};
 }

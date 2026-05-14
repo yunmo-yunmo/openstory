@@ -24,6 +24,7 @@ test("selecting a session also selects the session chapter", () => {
 		nextStateForSessionSelection({
 			sessionId: "session-a",
 			sessionChapterId: "chapter-a",
+			currentChapterId: "chapter-b",
 		}),
 		{
 			activeSessionId: "session-a",
@@ -37,10 +38,11 @@ test("selecting an unbound session keeps the current chapter visible", () => {
 		nextStateForSessionSelection({
 			sessionId: "session-a",
 			sessionChapterId: null,
+			currentChapterId: "chapter-b",
 		}),
 		{
 			activeSessionId: "session-a",
-			selectedChapterId: null,
+			selectedChapterId: "chapter-b",
 		},
 	);
 });

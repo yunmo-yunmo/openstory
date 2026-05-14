@@ -137,13 +137,14 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 			const next = nextStateForSessionSelection({
 				sessionId,
 				sessionChapterId,
+				currentChapterId: selectedChapterId,
 			});
 			setActiveSessionId(next.activeSessionId);
 			setSelectedChapterId(next.selectedChapterId);
 			setEditorProposals([]);
 			setWorkspaceMode("chapters");
 		},
-		[],
+		[selectedChapterId],
 	);
 
 	const centerPanel =
