@@ -5,6 +5,20 @@ import type { ConsistencyIssue } from "../ai/tools/check-consistency";
 type AgentFindingDelegate = {
 	deleteMany: (args: { where: Record<string, unknown> }) => unknown;
 	createMany: (args: { data: AgentFindingCreatePayload[] }) => unknown;
+	findMany: (args: {
+		where: Record<string, unknown>;
+		select: {
+			category: true;
+			severity: true;
+			description: true;
+		};
+	}) => Promise<
+		Array<{
+			category: string;
+			severity: string;
+			description: string;
+		}>
+	>;
 };
 
 type AgentFindingDb = {
@@ -70,11 +84,41 @@ function buildFindingCreatePayload(
 	};
 }
 
+function issueIdentity(issue: {
+	category?: string;
+	type?: string;
+	severity: string;
+	description: string;
+}) {
+	return [issue.category ?? issue.type ?? "", issue.severity, issue.description]
+		.map((part) => part.trim())
+		.join("\u0000");
+}
+
 export async function persistConsistencyFindings(
 	db: AgentFindingDb,
 	{ projectId, chapterId, issues }: PersistConsistencyFindingsInput,
 ) {
 	return await db.$transaction(async (tx) => {
+		const terminalFindings = await tx.agentFinding.findMany({
+			where: {
+				projectId,
+				chapterId,
+				type: "consistency_issue",
+				source: "background_agent",
+				status: { in: ["ignored", "resolved"] },
+			},
+			select: {
+				category: true,
+				severity: true,
+				description: true,
+			},
+		});
+		const terminalIdentities = new Set(terminalFindings.map(issueIdentity));
+		const currentIssues = issues.filter(
+			(issue) => !terminalIdentities.has(issueIdentity(issue)),
+		);
+
 		await tx.agentFinding.deleteMany({
 			where: {
 				projectId,
@@ -83,12 +127,12 @@ export async function persistConsistencyFindings(
 			},
 		});
 
-		if (issues.length === 0) {
+		if (currentIssues.length === 0) {
 			return { count: 0 };
 		}
 
 		return await tx.agentFinding.createMany({
-			data: issues.map((issue) =>
+			data: currentIssues.map((issue) =>
 				buildFindingCreatePayload(projectId, chapterId, issue),
 			),
 		});

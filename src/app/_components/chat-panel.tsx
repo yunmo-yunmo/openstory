@@ -121,7 +121,7 @@ export function ChatPanel({
 		});
 	}, [projectId, chapterId, createSessionMutation]);
 
-	if (!chapterId) {
+	if (!chapterId && !activeSessionId) {
 		return (
 			<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-l">
 				<div className="flex flex-1 items-center justify-center px-6">

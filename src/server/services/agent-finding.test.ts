@@ -18,19 +18,43 @@ type MockDb = {
 	agentFinding: {
 		deleteMany: (args: DeleteManyCall) => { count: number };
 		createMany: (args: CreateManyCall) => { count: number };
+		findMany: (args: {
+			where: Record<string, unknown>;
+			select: {
+				category: true;
+				severity: true;
+				description: true;
+			};
+		}) => Promise<
+			Array<{
+				category: string;
+				severity: string;
+				description: string;
+			}>
+		>;
 	};
 	$transaction: <T>(fn: (tx: MockDb) => T | Promise<T>) => Promise<T>;
 };
 
-function createMockDb() {
+function createMockDb({
+	terminalFindings = [],
+}: {
+	terminalFindings?: Array<{
+		category: string;
+		severity: string;
+		description: string;
+	}>;
+} = {}) {
 	const calls: {
 		transactionCount: number;
 		deleteMany: DeleteManyCall[];
 		createMany: CreateManyCall[];
+		findMany: Array<{ where: Record<string, unknown> }>;
 	} = {
 		transactionCount: 0,
 		deleteMany: [],
 		createMany: [],
+		findMany: [],
 	};
 
 	const db: MockDb = {
@@ -42,6 +66,10 @@ function createMockDb() {
 			createMany: (args: CreateManyCall) => {
 				calls.createMany.push(args);
 				return { count: args.data.length };
+			},
+			findMany: async (args: { where: Record<string, unknown> }) => {
+				calls.findMany.push(args);
+				return terminalFindings;
 			},
 		},
 		$transaction: async <T>(fn: (tx: typeof db) => T | Promise<T>) => {
@@ -149,6 +177,66 @@ describe("persistConsistencyFindings", () => {
 		assert.equal(calls.deleteMany[0]?.where.status, "open");
 		assert.equal(calls.deleteMany[0]?.where.type, "consistency_issue");
 		assert.equal(calls.deleteMany[0]?.where.source, "background_agent");
+	});
+
+	test("does not recreate ignored or resolved findings with the same issue identity", async () => {
+		const { db, calls } = createMockDb({
+			terminalFindings: [
+				{
+					category: "continuity",
+					severity: "high",
+					description: "主角在上一章已经丢失钥匙，但本章开头直接用钥匙开门。",
+				},
+			],
+		});
+
+		await persistConsistencyFindings(db, {
+			projectId: "project-1",
+			chapterId: "chapter-1",
+			issues: [
+				{
+					type: "continuity",
+					description: "主角在上一章已经丢失钥匙，但本章开头直接用钥匙开门。",
+					severity: "high",
+					locations: ["第2段"],
+				},
+				{
+					type: "timeline",
+					description: "傍晚之后又出现清晨阳光。",
+					severity: "medium",
+					locations: [],
+				},
+			],
+		});
+
+		assert.deepEqual(calls.findMany[0], {
+			where: {
+				projectId: "project-1",
+				chapterId: "chapter-1",
+				type: "consistency_issue",
+				source: "background_agent",
+				status: { in: ["ignored", "resolved"] },
+			},
+			select: {
+				category: true,
+				severity: true,
+				description: true,
+			},
+		});
+		assert.deepEqual(calls.createMany[0]?.data, [
+			{
+				projectId: "project-1",
+				chapterId: "chapter-1",
+				type: "consistency_issue",
+				category: "timeline",
+				severity: "medium",
+				title: "傍晚之后又出现清晨阳光。",
+				description: "傍晚之后又出现清晨阳光。",
+				locations: [],
+				status: "open",
+				source: "background_agent",
+			},
+		]);
 	});
 
 	test("truncates titles to 80 chars with an ellipsis", async () => {
