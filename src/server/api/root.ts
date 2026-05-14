@@ -1,4 +1,5 @@
 import { env } from "~/env";
+import { agentFindingRouter } from "~/server/api/routers/agent-finding";
 import { chapterRouter } from "~/server/api/routers/chapter";
 import { characterRouter } from "~/server/api/routers/character";
 import { createLLMConfigRouter } from "~/server/api/routers/llm-config";
@@ -22,6 +23,10 @@ export const appRouter = createTRPCRouter({
 	search: searchRouter,
 	session: sessionRouter,
 	revisionProposal: revisionProposalRouter,
+	agentFinding: agentFindingRouter({
+		createTRPCRouter,
+		protectedProcedure,
+	}),
 	worldNote: worldNoteRouter,
 	llmConfig: createLLMConfigRouter({
 		createTRPCRouter,

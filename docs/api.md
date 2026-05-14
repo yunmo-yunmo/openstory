@@ -26,6 +26,7 @@ All routers currently use `protectedProcedure`. Requests require a valid session
 | `search` | `searchAll` |
 | `session` | `create`, `list`, `getById`, `send`, `delete` |
 | `revisionProposal` | `listBySession`, `accept`, `reject` |
+| `agentFinding` | `listByChapter`, `ignore`, `resolve` |
 | `llmConfig` | `list`, `create`, `update`, `delete`, `setActive`, `status`, `fetchModels`, `testConnection` |
 
 ## Project
@@ -660,6 +661,68 @@ Input:
 
 Rejects a pending revision proposal. Verifies ownership and pending status.
 Returns `{ proposalId: string, status: string }`.
+
+## Agent Finding
+
+Background agent findings for chapter consistency and quality checks. All procedures require a valid session and scope access through project ownership.
+
+### `agentFinding.listByChapter`
+
+Query.
+
+Input:
+
+```typescript
+{ chapterId: string }
+```
+
+Verifies the chapter belongs to the current user through `chapter.project.userId`. Missing or unauthorized chapters return `NOT_FOUND`.
+
+Returns open findings for the chapter only, ordered by severity (`high`, `medium`, `low`) and then `createdAt desc`.
+
+Selected fields:
+
+```typescript
+{
+  id: string;
+  type: string;
+  category: string;
+  severity: string;
+  title: string;
+  description: string;
+  locations: unknown | null;
+  status: string;
+  createdAt: Date;
+}
+```
+
+### `agentFinding.ignore`
+
+Mutation.
+
+Input:
+
+```typescript
+{ id: string }
+```
+
+Marks an owned finding as ignored. The mutation scopes the update through `project.userId`; missing or unauthorized findings return `NOT_FOUND`.
+
+Returns `{ id: string, status: "ignored" }`.
+
+### `agentFinding.resolve`
+
+Mutation.
+
+Input:
+
+```typescript
+{ id: string }
+```
+
+Marks an owned finding as resolved. The mutation scopes the update through `project.userId`; missing or unauthorized findings return `NOT_FOUND`.
+
+Returns `{ id: string, status: "resolved" }`.
 
 ## LLM Config
 
