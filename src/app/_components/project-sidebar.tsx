@@ -38,7 +38,7 @@ export function ProjectSidebar({
 	selectedChapterId: string | null;
 	onSelectChapter: (id: string) => void;
 	activeSessionId: string | null;
-	onSelectSession: (id: string) => void;
+	onSelectSession: (id: string, chapterId: string | null) => void;
 	workspaceMode: WorkspaceMode;
 	onWorkspaceModeChange: (mode: WorkspaceMode) => void;
 }) {
@@ -260,7 +260,9 @@ export function ProjectSidebar({
 												: "border-study-600 bg-study-700/40 hover:border-study-500 hover:bg-study-700/70"
 										}`}
 										key={session.id}
-										onClick={() => onSelectSession(session.id)}
+										onClick={() =>
+											onSelectSession(session.id, session.chapterId)
+										}
 										type="button"
 									>
 										<span className="truncate font-sans text-ink-muted text-xs">

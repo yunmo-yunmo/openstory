@@ -13,6 +13,10 @@ import { ProjectSidebar } from "./project-sidebar";
 import type { AIOperation } from "./selection-menu";
 import { SelectionMenu } from "./selection-menu";
 import type { WorkspaceMode } from "./story-bible-types";
+import {
+	nextStateForChapterSelection,
+	nextStateForSessionSelection,
+} from "./workspace-shell-helpers";
 import { WorldNotesPanel } from "./world-notes-panel";
 
 export function WorkspaceShell({ projectId }: { projectId: string }) {
@@ -115,6 +119,33 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 		setPendingSelection(null);
 	}, []);
 
+	const handleSelectChapter = useCallback(
+		(chapterId: string) => {
+			const next = nextStateForChapterSelection({
+				chapterId,
+				activeSessionId,
+			});
+			setSelectedChapterId(next.selectedChapterId);
+			setActiveSessionId(next.activeSessionId);
+			setEditorProposals([]);
+		},
+		[activeSessionId],
+	);
+
+	const handleSelectSession = useCallback(
+		(sessionId: string, sessionChapterId: string | null) => {
+			const next = nextStateForSessionSelection({
+				sessionId,
+				sessionChapterId,
+			});
+			setActiveSessionId(next.activeSessionId);
+			setSelectedChapterId(next.selectedChapterId);
+			setEditorProposals([]);
+			setWorkspaceMode("chapters");
+		},
+		[],
+	);
+
 	const centerPanel =
 		workspaceMode === "characters" ? (
 			<CharactersPanel projectId={projectId} />
@@ -143,8 +174,8 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 		<div className="flex min-h-screen flex-col bg-study-900 lg:grid lg:grid-cols-[280px_minmax(0,1fr)_380px]">
 			<ProjectSidebar
 				activeSessionId={activeSessionId}
-				onSelectChapter={setSelectedChapterId}
-				onSelectSession={setActiveSessionId}
+				onSelectChapter={handleSelectChapter}
+				onSelectSession={handleSelectSession}
 				onWorkspaceModeChange={setWorkspaceMode}
 				projectId={projectId}
 				selectedChapterId={selectedChapterId}
