@@ -8,7 +8,7 @@ OpenStory is a Next.js writing workspace for long-form fiction. It combines proj
 - tRPC v11 with SuperJSON
 - SQLite + Prisma ORM via `@prisma/client`
 - NextAuth.js v5 beta with Discord OAuth and optional local user mode
-- Tailwind CSS v4 and Biome
+- Tailwind CSS v4, lucide-react icons, and Biome
 - Vercel AI SDK v6 with Anthropic provider support
 
 ## Setup
@@ -100,6 +100,7 @@ The chapter editor supports selection-based AI actions: select text to trigger r
 
 ```text
 src/app/                 # Next.js App Router pages and UI components
+src/app/_components/ui/  # Shared UI primitives for buttons, cards, dialogs, forms, and empty states
 src/server/api/          # tRPC routers
 src/server/ai/           # AI context manager, tools, and background agents
 src/server/llm/          # Provider-agnostic LLM client layer
@@ -113,6 +114,7 @@ docs/api.md              # tRPC API reference
 - `~/` maps to `./src/`.
 - Chapter and world-note content is stored as TipTap JSON, not plain text.
 - `src/server/services/tiptap-converter.ts` is the only module that should understand TipTap JSON internals.
+- Reuse shared primitives in `src/app/_components/ui/` for buttons, cards, modals, forms, badges, panel headers, and empty states before adding one-off UI styles.
 - Server-only modules use `import "server-only"`, except shared converter code and `story-bible-types.ts` used by client components.
 - AI tool data access must always scope entity IDs by `projectId`.
 - Existing AI tool updates should filter by `{ id, projectId }`; never reassign ownership by overwriting `projectId`.

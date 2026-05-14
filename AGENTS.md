@@ -9,6 +9,7 @@ This file provides guidance to coding agents (Claude, GPT, etc.) when working wi
 - **Database:** SQLite via Prisma ORM (`@prisma/client`)
 - **Auth:** NextAuth.js v5 (beta) with Discord OAuth and optional local user mode
 - **Styling:** Tailwind CSS v4 via `@tailwindcss/postcss`
+- **Icons:** `lucide-react`
 - **AI:** Vercel AI SDK (`ai` v6 + `@ai-sdk/anthropic` + `@ai-sdk/openai`)
 - **Validation:** Zod, with env validation via `@t3-oss/env-nextjs`
 - **Lint/format:** Biome (replaces ESLint + Prettier)
@@ -243,6 +244,13 @@ Components in `src/app/_components/`:
 - `selection-menu.tsx`: floating menu for AI actions (rewrite, polish, expand, shorten, continue) on selected text
 - `story-bible-types.ts`: shared types and constants for AI operations, workspace modes (imported by both client and server)
 
+Shared UI primitives live in `src/app/_components/ui/`:
+
+- `button.tsx`, `card.tsx`, `badge.tsx`: common action and display primitives
+- `modal.tsx`: shared dialog shell with focus trapping, Escape/overlay close handling, and focus restore
+- `form.tsx`: shared field, label, input, textarea, and select styling
+- `empty-state.tsx`, `panel-header.tsx`, `decorative.tsx`, `utils.ts`: reusable layout, empty-state, ornament, and class-name helpers
+
 Editor extensions in `src/app/_components/extensions/`:
 
 - `inline-diff.ts`: ProseMirror decoration plugin for rendering revision proposal diffs inline
@@ -267,6 +275,7 @@ Both pages use `<WorkspaceErrorBoundary>` + `<Suspense>` wrapping.
 ### File conventions
 
 - Components under `src/app/_components/` (private, not routes)
+- Shared UI primitives under `src/app/_components/ui/`; reuse them before adding one-off button, modal, form, card, or badge styling
 - `src/server/` modules use `import "server-only"` to prevent client-side imports
 - Exception: `tiptap-converter.ts` omits `server-only` because client components import it
 - Exception: `story-bible-types.ts` in `_components/` is imported by both client and server code (no `server-only`)
