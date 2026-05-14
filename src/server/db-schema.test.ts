@@ -77,9 +77,10 @@ test("AgentFinding stores background agent findings for projects and chapters", 
 	assert.match(
 		agentFinding,
 		fieldPattern(
-			"chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)",
+			"chapter Chapter? @relation(fields: [projectId, chapterId], references: [projectId, id], onDelete: Cascade)",
 		),
 	);
+	assert.match(chapter, /@@unique\(\[projectId, id\]\)/);
 	assert.match(agentFinding, /@@index\(\[projectId, chapterId, status\]\)/);
 	assert.match(agentFinding, /@@index\(\[projectId, type, status\]\)/);
 });

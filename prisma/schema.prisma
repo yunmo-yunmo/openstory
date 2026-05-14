@@ -101,6 +101,7 @@ model Chapter {
     agentFindings AgentFinding[]
 
     @@index([projectId, order])
+    @@unique([projectId, id])
 }
 
 model AgentFinding {
@@ -119,7 +120,7 @@ model AgentFinding {
     updatedAt   DateTime @updatedAt
 
     project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-    chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+    chapter Chapter? @relation(fields: [projectId, chapterId], references: [projectId, id], onDelete: Cascade)
 
     @@index([projectId, chapterId, status])
     @@index([projectId, type, status])
