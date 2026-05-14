@@ -37,6 +37,7 @@ interface AgentRunnerDependencies {
 			projectId: string;
 			chapterId: string;
 			issues: ConsistencyIssue[];
+			expectedChapterUpdatedAt?: Date;
 		},
 	) => Promise<unknown>;
 }
@@ -46,6 +47,7 @@ export async function runBackgroundAgents(opts: {
 	userId: string;
 	projectId: string;
 	chapterId: string;
+	expectedChapterUpdatedAt?: Date;
 	dependencies?: AgentRunnerDependencies;
 }): Promise<AgentRunResult> {
 	const createClient = opts.dependencies?.createLLMClient ?? createLLMClient;
@@ -93,6 +95,7 @@ export async function runBackgroundAgents(opts: {
 				projectId: opts.projectId,
 				chapterId: opts.chapterId,
 				issues: result.consistencyIssues,
+				expectedChapterUpdatedAt: opts.expectedChapterUpdatedAt,
 			});
 		} catch (error) {
 			result.errors.push(

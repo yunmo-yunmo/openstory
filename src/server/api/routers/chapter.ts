@@ -108,6 +108,7 @@ export const chapterRouter = createTRPCRouter({
 				userId: ctx.session.user.id,
 				projectId: chapter.projectId,
 				chapterId: chapter.id,
+				expectedChapterUpdatedAt: chapter.updatedAt,
 			}).catch((err) => {
 				console.error("[chapter.save] Background agents failed:", err);
 			});

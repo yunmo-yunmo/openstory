@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { ConsistencyIssue } from "../ai/tools/check-consistency";
-import {
-	buildFindingRevisionPrompt,
-	persistConsistencyFindings,
-} from "./agent-finding";
+import { persistConsistencyFindings } from "./agent-finding";
 
 type DeleteManyCall = {
 	where: Record<string, unknown>;
@@ -15,6 +12,16 @@ type CreateManyCall = {
 };
 
 type MockDb = {
+	chapter: {
+		findFirst: (args: {
+			where: {
+				id: string;
+				projectId: string;
+				updatedAt?: Date;
+			};
+			select: { id: true };
+		}) => Promise<{ id: string } | null>;
+	};
 	agentFinding: {
 		deleteMany: (args: DeleteManyCall) => { count: number };
 		createMany: (args: CreateManyCall) => { count: number };
@@ -38,26 +45,43 @@ type MockDb = {
 
 function createMockDb({
 	terminalFindings = [],
+	currentChapter = { id: "chapter-1" },
 }: {
 	terminalFindings?: Array<{
 		category: string;
 		severity: string;
 		description: string;
 	}>;
+	currentChapter?: { id: string } | null;
 } = {}) {
 	const calls: {
 		transactionCount: number;
+		chapterFindFirst: Array<{
+			where: {
+				id: string;
+				projectId: string;
+				updatedAt?: Date;
+			};
+			select: { id: true };
+		}>;
 		deleteMany: DeleteManyCall[];
 		createMany: CreateManyCall[];
 		findMany: Array<{ where: Record<string, unknown> }>;
 	} = {
 		transactionCount: 0,
+		chapterFindFirst: [],
 		deleteMany: [],
 		createMany: [],
 		findMany: [],
 	};
 
 	const db: MockDb = {
+		chapter: {
+			findFirst: async (args) => {
+				calls.chapterFindFirst.push(args);
+				return currentChapter;
+			},
+		},
 		agentFinding: {
 			deleteMany: (args: DeleteManyCall) => {
 				calls.deleteMany.push(args);
@@ -239,6 +263,38 @@ describe("persistConsistencyFindings", () => {
 		]);
 	});
 
+	test("skips replacing findings when the chapter has changed since the agent run started", async () => {
+		const expectedChapterUpdatedAt = new Date("2026-05-14T10:00:00.000Z");
+		const { db, calls } = createMockDb({ currentChapter: null });
+
+		const result = await persistConsistencyFindings(db, {
+			projectId: "project-1",
+			chapterId: "chapter-1",
+			expectedChapterUpdatedAt,
+			issues: [
+				{
+					type: "timeline",
+					description: "傍晚之后又出现清晨阳光。",
+					severity: "medium",
+					locations: [],
+				},
+			],
+		});
+
+		assert.deepEqual(result, { count: 0, skipped: "stale_chapter" });
+		assert.deepEqual(calls.chapterFindFirst[0], {
+			where: {
+				id: "chapter-1",
+				projectId: "project-1",
+				updatedAt: expectedChapterUpdatedAt,
+			},
+			select: { id: true },
+		});
+		assert.equal(calls.findMany.length, 0);
+		assert.equal(calls.deleteMany.length, 0);
+		assert.equal(calls.createMany.length, 0);
+	});
+
 	test("truncates titles to 80 chars with an ellipsis", async () => {
 		const { db, calls } = createMockDb();
 		const description = `${"a".repeat(80)} extra text`;
@@ -257,18 +313,5 @@ describe("persistConsistencyFindings", () => {
 		});
 
 		assert.equal(calls.createMany[0]?.data[0]?.title, `${"a".repeat(80)}...`);
-	});
-});
-
-describe("buildFindingRevisionPrompt", () => {
-	test("includes Chinese edit intent, description, and locations", () => {
-		const prompt = buildFindingRevisionPrompt({
-			description: "角色在上一章受伤，本章却能立刻奔跑。",
-			locations: ["第4段", "追逐场景"],
-		});
-
-		assert.match(prompt, /请根据以下一致性问题修改当前章节/);
-		assert.match(prompt, /角色在上一章受伤，本章却能立刻奔跑。/);
-		assert.match(prompt, /第4段、追逐场景/);
 	});
 });

@@ -139,42 +139,12 @@ export function ChatPanel({
 		);
 	}
 
-	if (!activeSessionId) {
-		return (
-			<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-l">
-				<div className="flex flex-1 items-center justify-center px-6">
-					<div className="flex max-w-xs flex-col items-center gap-4 text-center">
-						<MessageSquarePlus
-							aria-hidden="true"
-							className="h-12 w-12 text-amber/70"
-						/>
-						<div>
-							<p className="font-display text-2xl text-ink">
-								与 AI 写作助手开始对话
-							</p>
-							<p className="mt-2 text-ink-dim text-sm leading-relaxed">
-								讨论灵感、获取反馈、寻求建议。
-							</p>
-						</div>
-						<Button
-							disabled={createSessionMutation.isPending}
-							onClick={handleNewChat}
-							size="lg"
-							type="button"
-						>
-							<Send aria-hidden="true" className="h-4 w-4" />
-							{createSessionMutation.isPending ? "创建中..." : "新对话"}
-						</Button>
-					</div>
-				</div>
-			</aside>
-		);
-	}
-
 	return (
 		<ChatPanelInner
 			activeSessionId={activeSessionId}
 			chapterId={chapterId}
+			createSessionMutation={createSessionMutation}
+			onNewChat={handleNewChat}
 			onOpenModelServices={onOpenModelServices}
 			onProposalsChange={onProposalsChange}
 			onSelectionConsumed={onSelectionConsumed}
@@ -188,17 +158,21 @@ export function ChatPanel({
 function ChatPanelInner({
 	projectId,
 	activeSessionId,
+	createSessionMutation,
 	chapterId,
 	onSessionChange,
+	onNewChat,
 	onOpenModelServices,
 	onProposalsChange,
 	pendingSelection,
 	onSelectionConsumed,
 }: {
 	projectId: string;
-	activeSessionId: string;
+	activeSessionId: string | null;
+	createSessionMutation: { isPending: boolean };
 	chapterId: string | null;
 	onSessionChange: (id: string | null) => void;
+	onNewChat: () => void;
 	onOpenModelServices?: () => void;
 	onProposalsChange?: (proposals: DiffProposal[]) => void;
 	pendingSelection?: {
@@ -216,9 +190,10 @@ function ChatPanelInner({
 	const [modelStatus] = api.llmConfig.status.useSuspenseQuery();
 	const hasUsableConfig = modelStatus.hasUsableConfig;
 
-	const [sessionData] = api.session.getById.useSuspenseQuery({
-		id: activeSessionId,
-	});
+	const { data: sessionData } = api.session.getById.useQuery(
+		{ id: activeSessionId ?? "" },
+		{ enabled: !!activeSessionId },
+	);
 
 	const messages: SessionMessage[] = sessionData
 		? (sessionData.messages as SessionMessage[])
@@ -227,13 +202,13 @@ function ChatPanelInner({
 		!!chapterId && sessionData?.chapterId === chapterId;
 
 	const { data: proposalsData } = api.revisionProposal.listBySession.useQuery(
-		{ sessionId: activeSessionId },
+		{ sessionId: activeSessionId ?? "" },
 		{ enabled: !!activeSessionId },
 	);
 
 	const { data: findingsData } = api.agentFinding.listByChapter.useQuery(
 		{ chapterId: chapterId ?? "" },
-		{ enabled: !!chapterId },
+		{ enabled: !!chapterId, refetchInterval: chapterId ? 5000 : false },
 	);
 
 	const findings = (findingsData ?? []) as AgentFinding[];
@@ -261,11 +236,15 @@ function ChatPanelInner({
 	const sendMutation = api.session.send.useMutation({
 		onSuccess: () => {
 			setInput("");
-			void utils.session.getById.invalidate({ id: activeSessionId });
+			if (activeSessionId) {
+				void utils.session.getById.invalidate({ id: activeSessionId });
+			}
 			void utils.session.list.invalidate({ projectId });
-			void utils.revisionProposal.listBySession.invalidate({
-				sessionId: activeSessionId,
-			});
+			if (activeSessionId) {
+				void utils.revisionProposal.listBySession.invalidate({
+					sessionId: activeSessionId,
+				});
+			}
 			if (chapterId) {
 				void utils.agentFinding.listByChapter.invalidate({ chapterId });
 			}
@@ -344,6 +323,7 @@ function ChatPanelInner({
 		const trimmed = input.trim();
 		if (
 			!trimmed ||
+			!activeSessionId ||
 			sendMutation.isPending ||
 			!hasUsableConfig ||
 			streamingMessage !== null
@@ -423,6 +403,7 @@ function ChatPanelInner({
 		(finding: AgentFinding) => {
 			if (
 				!hasUsableConfig ||
+				!activeSessionId ||
 				!canGenerateFindingRevision ||
 				sendMutation.isPending ||
 				streamingMessage !== null
@@ -617,12 +598,41 @@ function ChatPanelInner({
 			)}
 
 			<div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-				{messages.length === 0 && !sendMutation.isPending && (
-					<div className="py-10 text-center">
-						<p className="text-ink-dim text-xs italic">
-							与助手分享你的第一个想法
-						</p>
+				{!activeSessionId ? (
+					<div className="flex min-h-[320px] items-center justify-center px-1 py-10">
+						<div className="flex max-w-xs flex-col items-center gap-4 text-center">
+							<MessageSquarePlus
+								aria-hidden="true"
+								className="h-12 w-12 text-amber/70"
+							/>
+							<div>
+								<p className="font-display text-2xl text-ink">
+									与 AI 写作助手开始对话
+								</p>
+								<p className="mt-2 text-ink-dim text-sm leading-relaxed">
+									讨论灵感、获取反馈、寻求建议。
+								</p>
+							</div>
+							<Button
+								disabled={createSessionMutation.isPending}
+								onClick={onNewChat}
+								size="lg"
+								type="button"
+							>
+								<Send aria-hidden="true" className="h-4 w-4" />
+								{createSessionMutation.isPending ? "创建中..." : "新对话"}
+							</Button>
+						</div>
 					</div>
+				) : (
+					messages.length === 0 &&
+					!sendMutation.isPending && (
+						<div className="py-10 text-center">
+							<p className="text-ink-dim text-xs italic">
+								与助手分享你的第一个想法
+							</p>
+						</div>
+					)
 				)}
 
 				{messages.map((msg) => {
@@ -675,12 +685,14 @@ function ChatPanelInner({
 				<div className="flex items-end gap-2">
 					<textarea
 						className="max-h-[120px] min-h-[44px] flex-1 resize-none rounded border border-study-600 bg-study-700 px-3 py-2 font-sans text-ink text-sm placeholder:text-ink-dim/70 focus:border-amber focus:outline-none focus:ring-2 focus:ring-amber/20 disabled:cursor-not-allowed disabled:opacity-50"
-						disabled={!hasUsableConfig}
+						disabled={!activeSessionId || !hasUsableConfig}
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={handleKeyDown}
 						placeholder={
 							hasUsableConfig
-								? "给助手发消息..."
+								? activeSessionId
+									? "给助手发消息..."
+									: "先创建对话后再发送消息..."
 								: "请先配置模型服务才能发送消息..."
 						}
 						ref={textareaRef}
@@ -690,7 +702,7 @@ function ChatPanelInner({
 					<Button
 						aria-label="发送消息"
 						disabled={isSendDisabled({
-							hasUsableConfig,
+							hasUsableConfig: !!activeSessionId && hasUsableConfig,
 							input,
 							isMutationPending: sendMutation.isPending,
 							isStreaming: streamingMessage !== null,

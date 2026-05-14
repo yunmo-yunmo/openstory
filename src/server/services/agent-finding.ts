@@ -22,6 +22,16 @@ type AgentFindingDelegate = {
 };
 
 type AgentFindingDb = {
+	chapter: {
+		findFirst: (args: {
+			where: {
+				id: string;
+				projectId: string;
+				updatedAt?: Date;
+			};
+			select: { id: true };
+		}) => Promise<{ id: string } | null>;
+	};
 	agentFinding: AgentFindingDelegate;
 	$transaction: <T>(fn: (tx: AgentFindingDb) => T | Promise<T>) => Promise<T>;
 };
@@ -43,11 +53,7 @@ type PersistConsistencyFindingsInput = {
 	projectId: string;
 	chapterId: string;
 	issues: ConsistencyIssue[];
-};
-
-type FindingPromptInput = {
-	description: string;
-	locations?: unknown;
+	expectedChapterUpdatedAt?: Date;
 };
 
 const CONSISTENCY_FINDING_FILTER = {
@@ -97,9 +103,28 @@ function issueIdentity(issue: {
 
 export async function persistConsistencyFindings(
 	db: AgentFindingDb,
-	{ projectId, chapterId, issues }: PersistConsistencyFindingsInput,
+	{
+		projectId,
+		chapterId,
+		issues,
+		expectedChapterUpdatedAt,
+	}: PersistConsistencyFindingsInput,
 ) {
 	return await db.$transaction(async (tx) => {
+		if (expectedChapterUpdatedAt) {
+			const currentChapter = await tx.chapter.findFirst({
+				where: {
+					id: chapterId,
+					projectId,
+					updatedAt: expectedChapterUpdatedAt,
+				},
+				select: { id: true },
+			});
+			if (!currentChapter) {
+				return { count: 0, skipped: "stale_chapter" as const };
+			}
+		}
+
 		const terminalFindings = await tx.agentFinding.findMany({
 			where: {
 				projectId,
@@ -137,18 +162,4 @@ export async function persistConsistencyFindings(
 			),
 		});
 	});
-}
-
-export function buildFindingRevisionPrompt(
-	finding: FindingPromptInput,
-): string {
-	const locations = Array.isArray(finding.locations)
-		? finding.locations.map(String).filter(Boolean).join("、")
-		: "";
-
-	return [
-		"请根据以下一致性问题修改当前章节，保持原有文风并生成可接受的修订方案。",
-		`问题描述：${finding.description}`,
-		`相关位置：${locations || "未标注"}`,
-	].join("\n");
 }

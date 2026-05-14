@@ -20,13 +20,16 @@ test("runBackgroundAgents persists successful consistency results", async () => 
 		projectId: string;
 		chapterId: string;
 		issues: ConsistencyIssue[];
+		expectedChapterUpdatedAt?: Date;
 	} | null = null;
+	const expectedChapterUpdatedAt = new Date("2026-05-14T10:00:00.000Z");
 
 	const result = await runBackgroundAgents({
 		db,
 		userId: "user-1",
 		projectId: "project-1",
 		chapterId: "chapter-1",
+		expectedChapterUpdatedAt,
 		dependencies: {
 			createLLMClient: () => llmClient,
 			generateChapterSummary: async () => "chapter summary",
@@ -42,6 +45,7 @@ test("runBackgroundAgents persists successful consistency results", async () => 
 		projectId: "project-1",
 		chapterId: "chapter-1",
 		issues,
+		expectedChapterUpdatedAt,
 	});
 	assert.deepEqual(result, {
 		summary: "chapter summary",
