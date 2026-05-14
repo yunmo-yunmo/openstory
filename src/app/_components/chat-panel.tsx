@@ -223,6 +223,8 @@ function ChatPanelInner({
 	const messages: SessionMessage[] = sessionData
 		? (sessionData.messages as SessionMessage[])
 		: [];
+	const canGenerateFindingRevision =
+		!!chapterId && sessionData?.chapterId === chapterId;
 
 	const { data: proposalsData } = api.revisionProposal.listBySession.useQuery(
 		{ sessionId: activeSessionId },
@@ -421,6 +423,7 @@ function ChatPanelInner({
 		(finding: AgentFinding) => {
 			if (
 				!hasUsableConfig ||
+				!canGenerateFindingRevision ||
 				sendMutation.isPending ||
 				streamingMessage !== null
 			) {
@@ -440,7 +443,13 @@ function ChatPanelInner({
 
 			sendMutation.mutate({ id: activeSessionId, message });
 		},
-		[activeSessionId, hasUsableConfig, sendMutation, streamingMessage],
+		[
+			activeSessionId,
+			canGenerateFindingRevision,
+			hasUsableConfig,
+			sendMutation,
+			streamingMessage,
+		],
 	);
 
 	return (
@@ -536,6 +545,7 @@ function ChatPanelInner({
 									sendMutation.isPending;
 								const generateDisabled =
 									!hasUsableConfig ||
+									!canGenerateFindingRevision ||
 									sendMutation.isPending ||
 									streamingMessage !== null;
 
@@ -587,6 +597,11 @@ function ChatPanelInner({
 												disabled={generateDisabled}
 												onClick={() => handleGenerateRevision(finding)}
 												size="sm"
+												title={
+													canGenerateFindingRevision
+														? undefined
+														: "当前对话未绑定本章"
+												}
 												type="button"
 												variant="secondary"
 											>
