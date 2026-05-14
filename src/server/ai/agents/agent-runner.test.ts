@@ -15,14 +15,12 @@ test("runBackgroundAgents persists successful consistency results", async () => 
 			locations: ["Chapter 3"],
 		},
 	];
-	let persisted:
-		| {
-				db: unknown;
-				projectId: string;
-				chapterId: string;
-				issues: ConsistencyIssue[];
-		  }
-		| null = null;
+	let persisted: {
+		db: unknown;
+		projectId: string;
+		chapterId: string;
+		issues: ConsistencyIssue[];
+	} | null = null;
 
 	const result = await runBackgroundAgents({
 		db,

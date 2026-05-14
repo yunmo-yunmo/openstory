@@ -4,9 +4,7 @@ import type { ConsistencyIssue } from "../ai/tools/check-consistency";
 
 type AgentFindingDelegate = {
 	deleteMany: (args: { where: Record<string, unknown> }) => unknown;
-	createMany: (args: {
-		data: AgentFindingCreatePayload[];
-	}) => unknown;
+	createMany: (args: { data: AgentFindingCreatePayload[] }) => unknown;
 };
 
 type AgentFindingDb = {
@@ -97,7 +95,9 @@ export async function persistConsistencyFindings(
 	});
 }
 
-export function buildFindingRevisionPrompt(finding: FindingPromptInput): string {
+export function buildFindingRevisionPrompt(
+	finding: FindingPromptInput,
+): string {
 	const locations = Array.isArray(finding.locations)
 		? finding.locations.map(String).filter(Boolean).join("、")
 		: "";
