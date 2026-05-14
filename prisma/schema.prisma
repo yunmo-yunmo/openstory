@@ -77,6 +77,7 @@ model Project {
     outlines    Outline[]
     aiSessions  AISession[]
     revisionProposals ChapterRevisionProposal[]
+    agentFindings AgentFinding[]
 
     @@index([userId])
 }
@@ -97,8 +98,31 @@ model Chapter {
     project  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
     snapshots ChapterSnapshot[]
     revisionProposals ChapterRevisionProposal[]
+    agentFindings AgentFinding[]
 
     @@index([projectId, order])
+}
+
+model AgentFinding {
+    id          String   @id @default(cuid())
+    projectId   String
+    chapterId   String?
+    type        String
+    category    String
+    severity    String
+    title       String
+    description String
+    locations   Json?
+    status      String   @default("open")
+    source      String   @default("background_agent")
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+    @@index([projectId, chapterId, status])
+    @@index([projectId, type, status])
 }
 
 model ChapterSnapshot {
