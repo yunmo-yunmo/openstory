@@ -93,10 +93,9 @@ function buildFindingCreatePayload(
 function issueIdentity(issue: {
 	category?: string;
 	type?: string;
-	severity: string;
 	description: string;
 }) {
-	return [issue.category ?? issue.type ?? "", issue.severity, issue.description]
+	return [issue.category ?? issue.type ?? "", issue.description]
 		.map((part) => part.trim())
 		.join("\u0000");
 }

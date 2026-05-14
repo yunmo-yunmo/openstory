@@ -295,8 +295,6 @@ function ChatPanelInner({
 				},
 			});
 			onSelectionConsumed?.();
-		} else if (chapterId) {
-			onSelectionConsumed?.();
 		}
 	}, [
 		pendingSelection,
@@ -305,7 +303,6 @@ function ChatPanelInner({
 		sendMutation.mutate,
 		sendMutation.isPending,
 		onSelectionConsumed,
-		chapterId,
 	]);
 
 	const adjustTextareaHeight = useCallback(() => {

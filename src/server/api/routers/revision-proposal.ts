@@ -78,6 +78,7 @@ export const revisionProposalRouter = createTRPCRouter({
 				userId: ctx.session.user.id,
 				projectId: result.projectId,
 				chapterId: result.chapterId,
+				expectedChapterUpdatedAt: result.chapter.updatedAt,
 			}).catch((error) => {
 				console.error(
 					"[revisionProposal.accept] background agents failed:",

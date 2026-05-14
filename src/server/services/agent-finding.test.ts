@@ -263,6 +263,33 @@ describe("persistConsistencyFindings", () => {
 		]);
 	});
 
+	test("keeps ignored or resolved findings suppressed when only severity changes", async () => {
+		const { db, calls } = createMockDb({
+			terminalFindings: [
+				{
+					category: "timeline",
+					severity: "low",
+					description: "傍晚之后又出现清晨阳光。",
+				},
+			],
+		});
+
+		await persistConsistencyFindings(db, {
+			projectId: "project-1",
+			chapterId: "chapter-1",
+			issues: [
+				{
+					type: "timeline",
+					description: "傍晚之后又出现清晨阳光。",
+					severity: "high",
+					locations: [],
+				},
+			],
+		});
+
+		assert.equal(calls.createMany.length, 0);
+	});
+
 	test("skips replacing findings when the chapter has changed since the agent run started", async () => {
 		const expectedChapterUpdatedAt = new Date("2026-05-14T10:00:00.000Z");
 		const { db, calls } = createMockDb({ currentChapter: null });

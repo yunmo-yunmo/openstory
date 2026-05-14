@@ -60,6 +60,7 @@ type ChapterRecord = {
 	content: string;
 	wordCount: number;
 	summary: string | null;
+	updatedAt: Date;
 };
 
 type RevisionTransaction = {

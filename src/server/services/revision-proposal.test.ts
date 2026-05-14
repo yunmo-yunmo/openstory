@@ -37,6 +37,7 @@ function createDbState(options: {
 		content: tiptapDoc(options.chapterText),
 		wordCount: 0,
 		summary: null,
+		updatedAt: new Date("2026-05-14T10:00:00.000Z"),
 	};
 	const proposal = {
 		id: "proposal-1",
@@ -68,6 +69,7 @@ function createDbState(options: {
 		chapter: {
 			update: async ({ data }: { data: Record<string, unknown> }) => {
 				Object.assign(chapter, data);
+				chapter.updatedAt = new Date("2026-05-14T10:01:00.000Z");
 				return chapter;
 			},
 		},
@@ -139,6 +141,10 @@ describe("revision proposal service", () => {
 		});
 
 		assert.equal(result.ok, true);
+		assert.equal(
+			result.chapter.updatedAt.toISOString(),
+			"2026-05-14T10:01:00.000Z",
+		);
 		assert.equal(
 			tiptapToPlainText(state.chapter.content),
 			"第一段。\n\n第二段。",
