@@ -1,6 +1,8 @@
 "use client";
 
 import {
+	ChevronDown,
+	ChevronRight,
 	MessageSquarePlus,
 	Send,
 	Sparkles,
@@ -49,6 +51,34 @@ interface ProposalType {
 	createdAt: Date;
 	decidedAt: Date | null;
 }
+
+type FindingSeverity = "high" | "medium" | "low";
+
+interface AgentFinding {
+	id: string;
+	severity: string;
+	title: string;
+	description: string;
+	locations: unknown | null;
+}
+
+const severityLabels: Record<FindingSeverity, string> = {
+	high: "高",
+	medium: "中",
+	low: "低",
+};
+
+const severityTone: Record<FindingSeverity, "danger" | "brass" | "muted"> = {
+	high: "danger",
+	medium: "brass",
+	low: "muted",
+};
+
+const severityRank: Record<FindingSeverity, number> = {
+	high: 3,
+	medium: 2,
+	low: 1,
+};
 
 export type { DiffProposal } from "./extensions/inline-diff";
 
@@ -178,6 +208,7 @@ function ChatPanelInner({
 	onSelectionConsumed?: () => void;
 }) {
 	const [input, setInput] = useState("");
+	const [areFindingsExpanded, setAreFindingsExpanded] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -197,6 +228,14 @@ function ChatPanelInner({
 		{ sessionId: activeSessionId },
 		{ enabled: !!activeSessionId },
 	);
+
+	const { data: findingsData } = api.agentFinding.listByChapter.useQuery(
+		{ chapterId: chapterId ?? "" },
+		{ enabled: !!chapterId },
+	);
+
+	const findings = (findingsData ?? []) as AgentFinding[];
+	const highestSeverity = getHighestSeverity(findings);
 
 	const proposalsMap = useMemo(() => {
 		const map = new Map<string, ProposalType>();
@@ -222,6 +261,28 @@ function ChatPanelInner({
 			setInput("");
 			void utils.session.getById.invalidate({ id: activeSessionId });
 			void utils.session.list.invalidate({ projectId });
+			void utils.revisionProposal.listBySession.invalidate({
+				sessionId: activeSessionId,
+			});
+			if (chapterId) {
+				void utils.agentFinding.listByChapter.invalidate({ chapterId });
+			}
+		},
+	});
+
+	const ignoreFindingMutation = api.agentFinding.ignore.useMutation({
+		onSuccess: () => {
+			if (chapterId) {
+				void utils.agentFinding.listByChapter.invalidate({ chapterId });
+			}
+		},
+	});
+
+	const resolveFindingMutation = api.agentFinding.resolve.useMutation({
+		onSuccess: () => {
+			if (chapterId) {
+				void utils.agentFinding.listByChapter.invalidate({ chapterId });
+			}
 		},
 	});
 
@@ -356,6 +417,32 @@ function ChatPanelInner({
 		[handleSend],
 	);
 
+	const handleGenerateRevision = useCallback(
+		(finding: AgentFinding) => {
+			if (
+				!hasUsableConfig ||
+				sendMutation.isPending ||
+				streamingMessage !== null
+			) {
+				return;
+			}
+
+			const locationsText = formatFindingLocations(finding.locations);
+			const message = [
+				"请根据下面的一致性发现生成一个结构化修订提案，用于修改当前章节。",
+				`发现：${finding.title}`,
+				`说明：${finding.description}`,
+				locationsText ? `位置：${locationsText}` : null,
+				"请优先保持原有文风，只给出可应用到章节正文的改写或补写建议。",
+			]
+				.filter(Boolean)
+				.join("\n");
+
+			sendMutation.mutate({ id: activeSessionId, message });
+		},
+		[activeSessionId, hasUsableConfig, sendMutation, streamingMessage],
+	);
+
 	return (
 		<aside className="flex min-h-screen flex-col border-study-600 bg-study-800/95 lg:border-l">
 			<div className="flex shrink-0 items-center justify-between gap-3 border-study-600 border-b px-5 py-4">
@@ -405,6 +492,112 @@ function ChatPanelInner({
 							</Button>
 						)}
 					</div>
+				</div>
+			)}
+
+			{findings.length > 0 && highestSeverity && (
+				<div className="border-amber/20 border-b bg-study-700/35 px-5 py-3">
+					<div className="flex items-center justify-between gap-3">
+						<button
+							aria-controls="chapter-findings-list"
+							aria-expanded={areFindingsExpanded}
+							className="flex min-w-0 items-center gap-2 text-left"
+							onClick={() => setAreFindingsExpanded((value) => !value)}
+							type="button"
+						>
+							{areFindingsExpanded ? (
+								<ChevronDown
+									aria-hidden="true"
+									className="h-4 w-4 shrink-0 text-amber"
+								/>
+							) : (
+								<ChevronRight
+									aria-hidden="true"
+									className="h-4 w-4 shrink-0 text-amber"
+								/>
+							)}
+							<span className="truncate font-label text-[10px] text-ink-muted uppercase tracking-[0.2em]">
+								章节发现 {findings.length} 条
+							</span>
+						</button>
+						<Badge tone={severityTone[highestSeverity]}>
+							最高 {severityLabels[highestSeverity]}
+						</Badge>
+					</div>
+
+					{areFindingsExpanded && (
+						<div className="mt-3 space-y-3" id="chapter-findings-list">
+							{findings.map((finding) => {
+								const severity = normalizeSeverity(finding.severity);
+								const locationsText = formatFindingLocations(finding.locations);
+								const statusActionDisabled =
+									ignoreFindingMutation.isPending ||
+									resolveFindingMutation.isPending ||
+									sendMutation.isPending;
+								const generateDisabled =
+									!hasUsableConfig ||
+									sendMutation.isPending ||
+									streamingMessage !== null;
+
+								return (
+									<div
+										className="border-study-600 border-t pt-3 first:border-t-0 first:pt-0"
+										key={finding.id}
+									>
+										<div className="mb-2 flex items-center justify-between gap-2">
+											<p className="min-w-0 truncate text-ink text-sm">
+												{finding.title}
+											</p>
+											<Badge tone={severityTone[severity]}>
+												{severityLabels[severity]}
+											</Badge>
+										</div>
+										<p className="text-ink-dim text-xs leading-relaxed">
+											{finding.description}
+										</p>
+										{locationsText && (
+											<p className="mt-1 font-mono text-[11px] text-ink-dim">
+												位置：{locationsText}
+											</p>
+										)}
+										<div className="mt-2 flex flex-wrap gap-2">
+											<Button
+												disabled={statusActionDisabled}
+												onClick={() =>
+													ignoreFindingMutation.mutate({ id: finding.id })
+												}
+												size="sm"
+												type="button"
+												variant="quiet"
+											>
+												忽略
+											</Button>
+											<Button
+												disabled={statusActionDisabled}
+												onClick={() =>
+													resolveFindingMutation.mutate({ id: finding.id })
+												}
+												size="sm"
+												type="button"
+												variant="quiet"
+											>
+												已解决
+											</Button>
+											<Button
+												disabled={generateDisabled}
+												onClick={() => handleGenerateRevision(finding)}
+												size="sm"
+												type="button"
+												variant="secondary"
+											>
+												生成修订
+											</Button>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					)}
 				</div>
 			)}
 
@@ -506,6 +699,85 @@ function getMessageKey(message: SessionMessage) {
 		JSON.stringify(message.toolCalls ?? []),
 		JSON.stringify(message.toolResults ?? []),
 	].join(":");
+}
+
+function normalizeSeverity(severity: string): FindingSeverity {
+	return severity === "high" || severity === "medium" || severity === "low"
+		? severity
+		: "low";
+}
+
+function getHighestSeverity(findings: AgentFinding[]): FindingSeverity | null {
+	let highest: FindingSeverity | null = null;
+	for (const finding of findings) {
+		const severity = normalizeSeverity(finding.severity);
+		if (!highest || severityRank[severity] > severityRank[highest]) {
+			highest = severity;
+		}
+	}
+	return highest;
+}
+
+function formatFindingLocations(locations: unknown): string | null {
+	if (locations == null) return null;
+	if (typeof locations === "string") return locations.trim() || null;
+	if (Array.isArray(locations)) {
+		const text = locations
+			.map((location) => formatLocationItem(location))
+			.filter(Boolean)
+			.join("；");
+		return text || null;
+	}
+	return formatLocationItem(locations);
+}
+
+function formatLocationItem(location: unknown): string {
+	if (location == null) return "";
+	if (typeof location === "string") return location.trim();
+	if (typeof location === "number" || typeof location === "boolean") {
+		return String(location);
+	}
+	if (typeof location !== "object") return "";
+
+	const record = location as Record<string, unknown>;
+	const chapter = getLocationValue(record, [
+		"chapterTitle",
+		"chapter",
+		"chapterId",
+	]);
+	const paragraph = getLocationValue(record, [
+		"paragraph",
+		"paragraphIndex",
+		"paragraphNumber",
+	]);
+	const quote = getLocationValue(record, ["quote", "text", "snippet"]);
+	const line = getLocationValue(record, ["line", "lineNumber"]);
+	const parts = [
+		chapter,
+		paragraph ? `段落 ${paragraph}` : null,
+		line ? `行 ${line}` : null,
+		quote ? `“${quote}”` : null,
+	].filter(Boolean);
+
+	return parts.length > 0 ? parts.join("，") : JSON.stringify(location);
+}
+
+function getLocationValue(
+	record: Record<string, unknown>,
+	keys: string[],
+): string | null {
+	for (const key of keys) {
+		const value = record[key];
+		if (
+			typeof value === "string" ||
+			typeof value === "number" ||
+			typeof value === "boolean"
+		) {
+			const text = String(value).trim();
+			if (text) return text;
+		}
+	}
+	return null;
 }
 
 function MessageBubble({ message }: { message: SessionMessage }) {
