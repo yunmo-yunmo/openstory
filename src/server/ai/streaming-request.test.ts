@@ -39,7 +39,7 @@ test("parseStreamingChatRequest accepts valid streaming chat input", async () =>
 	const body = await parseStreamingChatRequest(
 		new Request("http://localhost/api/chat/stream", {
 			body: JSON.stringify({
-				messages: [{ role: "user", content: "hello" }],
+				message: "hello",
 				projectId: "project-1",
 				sessionId: "session-1",
 			}),
@@ -48,7 +48,7 @@ test("parseStreamingChatRequest accepts valid streaming chat input", async () =>
 	);
 
 	assert.deepEqual(body, {
-		messages: [{ role: "user", content: "hello" }],
+		message: "hello",
 		projectId: "project-1",
 		sessionId: "session-1",
 	});

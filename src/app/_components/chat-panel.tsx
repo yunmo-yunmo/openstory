@@ -336,16 +336,11 @@ function ChatPanelInner({
 		setStreamingMessage("");
 
 		try {
-			const allMessages = [
-				...(sessionData?.messages ?? []),
-				{ role: "user", content: trimmed },
-			];
-
 			const response = await fetch("/api/chat/stream", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					messages: allMessages,
+					message: trimmed,
 					sessionId: activeSessionId,
 					projectId,
 				}),
@@ -381,7 +376,6 @@ function ChatPanelInner({
 		sendMutation,
 		hasUsableConfig,
 		streamingMessage,
-		sessionData,
 		projectId,
 		utils,
 	]);

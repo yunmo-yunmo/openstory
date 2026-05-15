@@ -13,14 +13,14 @@ export async function POST(request: Request) {
 	}
 
 	try {
-		const { messages, sessionId, projectId } =
+		const { message, sessionId, projectId } =
 			await parseStreamingChatRequest(request);
 		const streamingChat = await startStreamingSessionChat({
 			db,
 			userId: session.user.id,
 			sessionId,
 			projectId,
-			incomingMessages: messages,
+			message,
 		});
 
 		let fullText = "";

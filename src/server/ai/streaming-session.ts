@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PrismaClient } from "@prisma/client";
 import type { ModelMessage, ToolSet } from "ai";
+import { hasRevisionEditIntent } from "../../app/_components/story-bible-types";
 import { createLLMClient as defaultCreateLLMClient } from "../llm/client";
 import type { TaskType } from "../llm/types";
 import { assembleContext as defaultAssembleContext } from "./context-manager";
@@ -91,29 +92,18 @@ async function resolveToolMetadata(
 	};
 }
 
-function getLatestUserMessage(incomingMessages: ModelMessage[]) {
-	const lastMessage = incomingMessages[incomingMessages.length - 1];
-	if (!lastMessage || lastMessage.role !== "user") {
-		throw new StreamingSessionError("Missing user message", 400);
-	}
-
-	return {
-		role: "user" as const,
-		content:
-			typeof lastMessage.content === "string"
-				? lastMessage.content
-				: JSON.stringify(lastMessage.content),
-	};
-}
-
 export async function startStreamingSessionChat(opts: {
 	db: PrismaClient;
 	userId: string;
 	sessionId: string;
 	projectId: string;
-	incomingMessages: ModelMessage[];
+	message: string;
 	dependencies?: StreamingSessionDependencies;
 }) {
+	if (hasRevisionEditIntent(opts.message)) {
+		throw new StreamingSessionError("Non-streaming required", 409);
+	}
+
 	const assembleContext =
 		opts.dependencies?.assembleContext ?? defaultAssembleContext;
 	const createLLMClient =
@@ -145,7 +135,10 @@ export async function startStreamingSessionChat(opts: {
 		throw new StreamingSessionError("Session project mismatch", 400);
 	}
 
-	const userMessage = getLatestUserMessage(opts.incomingMessages);
+	const userMessage = {
+		role: "user" as const,
+		content: opts.message,
+	};
 	const storedMessages = parseStoredMessages(aiSession.messages);
 	const contextMessages = aiSession.chapterId
 		? await assembleContext({

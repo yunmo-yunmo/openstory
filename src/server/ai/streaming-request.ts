@@ -1,10 +1,9 @@
-import type { ModelMessage } from "ai";
 import { StreamingSessionError } from "./streaming-session";
 
 export { StreamingSessionError };
 
 export interface StreamingChatRequestBody {
-	messages: ModelMessage[];
+	message: string;
 	sessionId: string;
 	projectId: string;
 }
@@ -15,10 +14,11 @@ function isStreamingChatRequestBody(
 	return (
 		typeof body === "object" &&
 		body !== null &&
-		"messages" in body &&
+		"message" in body &&
 		"sessionId" in body &&
 		"projectId" in body &&
-		Array.isArray(body.messages) &&
+		typeof body.message === "string" &&
+		body.message.trim().length > 0 &&
 		typeof body.sessionId === "string" &&
 		body.sessionId.length > 0 &&
 		typeof body.projectId === "string" &&

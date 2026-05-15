@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ModelMessage } from "ai";
-import { startStreamingSessionChat } from "./streaming-session";
+import {
+	startStreamingSessionChat,
+	StreamingSessionError,
+} from "./streaming-session";
 
 test("startStreamingSessionChat streams with server-side chapter context and tools", async () => {
 	const storedMessages = [{ role: "assistant", content: "previous reply" }];
@@ -55,7 +58,7 @@ test("startStreamingSessionChat streams with server-side chapter context and too
 		userId: "user-1",
 		sessionId: "session-1",
 		projectId: "project-1",
-		incomingMessages: [{ role: "user", content: "continue the scene" }],
+		message: "talk about the scene",
 		dependencies: {
 			assembleContext: async (args) => {
 				assert.equal(args.projectId, "project-1");
@@ -87,7 +90,7 @@ test("startStreamingSessionChat streams with server-side chapter context and too
 		messages: [
 			...contextMessages,
 			...storedMessages,
-			{ role: "user", content: "continue the scene" },
+			{ role: "user", content: "talk about the scene" },
 		],
 		tools,
 		maxTokens: 4096,
@@ -101,7 +104,7 @@ test("startStreamingSessionChat streams with server-side chapter context and too
 		data: {
 			messages: JSON.stringify([
 				...storedMessages,
-				{ role: "user", content: "continue the scene" },
+				{ role: "user", content: "talk about the scene" },
 				{
 					role: "assistant",
 					content: "assistant response",
@@ -109,7 +112,7 @@ test("startStreamingSessionChat streams with server-side chapter context and too
 					toolResults,
 				},
 			]),
-			title: "continue the scene",
+			title: "talk about the scene",
 		},
 	});
 	assert.equal(transactionUsed, true);
@@ -135,7 +138,7 @@ test("startStreamingSessionChat rejects project mismatches before streaming", as
 			userId: "user-1",
 			sessionId: "session-1",
 			projectId: "project-requested",
-			incomingMessages: [{ role: "user", content: "hello" }],
+			message: "hello",
 			dependencies: {
 				assembleContext: async () => [],
 				createLLMClient: () => ({
@@ -148,6 +151,47 @@ test("startStreamingSessionChat rejects project mismatches before streaming", as
 			},
 		}),
 		/Session project mismatch/,
+	);
+
+	assert.equal(streamed, false);
+});
+
+test("startStreamingSessionChat rejects revision intent before streaming", async () => {
+	const db = {
+		aISession: {
+			findFirst: async () => ({
+				id: "session-1",
+				projectId: "project-1",
+				chapterId: "chapter-1",
+				title: "Session",
+				messages: "[]",
+			}),
+		},
+	};
+	let streamed = false;
+
+	await assert.rejects(
+		startStreamingSessionChat({
+			db: db as never,
+			userId: "user-1",
+			sessionId: "session-1",
+			projectId: "project-1",
+			message: "请润色这一段",
+			dependencies: {
+				assembleContext: async () => [],
+				createLLMClient: () => ({
+					stream: async () => {
+						streamed = true;
+						return { textStream: (async function* () {})() };
+					},
+				}),
+				createToolRegistry: () => ({}) as never,
+			},
+		}),
+		(error: unknown) =>
+			error instanceof StreamingSessionError &&
+			error.status === 409 &&
+			error.message === "Non-streaming required",
 	);
 
 	assert.equal(streamed, false);
