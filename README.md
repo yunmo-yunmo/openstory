@@ -1,6 +1,6 @@
 # OpenStory
 
-OpenStory is a Next.js writing workspace for long-form fiction. It combines project/chapter management, Story Bible workspaces for characters, outlines, and world notes, a dark "Writer's Study" editor UI, tRPC APIs, Prisma-backed persistence, and AI writing tools powered through the Vercel AI SDK.
+OpenStory is a Next.js writing workspace for long-form fiction. It combines project/chapter management, Story Bible workspaces for characters, outlines, and world notes, a dark "Writer's Study" editor UI, tRPC APIs, Prisma-backed persistence, and AI writing tools powered through the Vercel AI SDK. Background agents can summarize saved chapters and surface consistency findings directly in the writing flow.
 
 ## Stack
 
@@ -96,6 +96,8 @@ Inside a project workspace, the left sidebar switches between chapter editing, c
 
 The chapter editor supports selection-based AI actions: select text to trigger rewrite, polish, expand, shorten, or continue operations. AI revision proposals render as inline diffs in the editor with accept/reject controls. Chat responses stream in real time.
 
+After chapter saves, background agents refresh the chapter summary and persist open consistency findings. The chat panel shows chapter-level findings with severity, location notes, and actions to ignore, mark resolved, or generate a revision prompt for the bound chapter session.
+
 ## Project Layout
 
 ```text
@@ -104,7 +106,7 @@ src/app/_components/ui/  # Shared UI primitives for buttons, cards, dialogs, for
 src/server/api/          # tRPC routers
 src/server/ai/           # AI context manager, tools, and background agents
 src/server/llm/          # Provider-agnostic LLM client layer
-src/server/services/     # Shared text and TipTap converters
+src/server/services/     # Shared text, TipTap, revision proposal, and agent finding services
 prisma/schema.prisma     # SQLite schema
 docs/api.md              # tRPC API reference
 ```

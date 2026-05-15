@@ -89,13 +89,13 @@ There are **two separate tRPC client trees**. Import from the right one:
 src/server/api/
   trpc.ts        # tRPC init, createContext, publicProcedure, protectedProcedure
   root.ts        # appRouter registers all sub-routers
-  routers/       # project.ts, chapter.ts, character.ts, search.ts, session.ts, revision-proposal.ts, llm-config.ts
+  routers/       # project.ts, chapter.ts, character.ts, outline.ts, world-note.ts, search.ts, session.ts, revision-proposal.ts, agent-finding.ts, llm-config.ts
 ```
 
 - `publicProcedure`: no auth required
 - `protectedProcedure`: throws UNAUTHORIZED if `ctx.session.user` is null
 - `ctx` provides `db` (PrismaClient singleton) and `session` (NextAuth)
-- Currently 7 routers: `project` (5), `chapter` (8), `character` (5), `search` (1), `session` (5), `revisionProposal` (3), `llmConfig` (8)
+- Currently 10 routers: `project` (5), `chapter` (8), `character` (5), `outline` (5), `worldNote` (4), `search` (1), `session` (5), `revisionProposal` (3), `agentFinding` (3), `llmConfig` (8)
 - `llmConfig` router uses a factory pattern (`createLLMConfigRouter`) because it needs injected dependencies
 - `llmConfig` procedures: `list`, `create`, `update`, `delete`, `setActive`, `status`, `fetchModels`, `testConnection`
 
@@ -132,7 +132,7 @@ Session router `create` also uses Pattern B. Never use `findFirstOrThrow`; it th
 - SQLite. Prisma client outputs to `generated/prisma/` (non-standard path).
 - `src/server/db.ts` exports global singleton `db`.
 - After schema changes: `npm run db:push` (or `db:generate` for migrations). Client regenerates via `postinstall`.
-- Domain models: Project, Chapter, ChapterSnapshot, Character, WorldNote, Outline, AISession, LLMConfig (encrypted API keys), ChapterRevisionProposal.
+- Domain models: Project, Chapter, ChapterSnapshot, Character, WorldNote, Outline, AISession, LLMConfig (encrypted API keys), ChapterRevisionProposal, AgentFinding.
 - Chapter content is stored as **TipTap JSON** (ProseMirror document model), not plain text.
 
 ### LLM Provider Layer (`src/server/llm/`)
@@ -209,7 +209,9 @@ Fire-and-forget agents triggered after chapter save. Agent files are thin re-exp
 |-------|------|----------------|
 | `summary-agent` | `summary-agent.ts` | `generateSummary` as `generateChapterSummary` from `../tools/generate-summary` |
 | `consistency-agent` | `consistency-agent.ts` | `checkConsistency` as `checkChapterConsistency` + `ConsistencyIssue` type from `../tools/check-consistency` |
-| `agent-runner` | `agent-runner.ts` | `runBackgroundAgents({ db, userId, projectId, chapterId })`; orchestrates both, catches errors. Called via `.catch()` from `chapter.save` |
+| `agent-runner` | `agent-runner.ts` | `runBackgroundAgents({ db, userId, projectId, chapterId, expectedChapterUpdatedAt? })`; orchestrates both, catches errors, and persists consistency findings. Called via `.catch()` from `chapter.save` and revision proposal acceptance |
+
+Consistency results are stored as `AgentFinding` rows through `src/server/services/agent-finding.ts`. Persistence replaces only open background consistency findings for the chapter, preserves ignored/resolved findings, and skips stale writes when the chapter `updatedAt` no longer matches the run that produced the result.
 
 ### Env validation
 
@@ -234,7 +236,7 @@ Components in `src/app/_components/`:
 - `workspace-shell.tsx`: three-column layout, holds chapter + session state, model service dialog
 - `project-sidebar.tsx`: chapter list + AI session list
 - `chapter-editor-area.tsx`: TipTap rich-text editor with auto-save (2s debounce), inline diff decorations, selection-trigger for AI actions
-- `chat-panel.tsx`: AI chat with 3 states, streaming responses, revision proposal cards (accept/reject with per-proposal mutation tracking), model config status warning
+- `chat-panel.tsx`: AI chat with 3 states, streaming responses, revision proposal cards (accept/reject with per-proposal mutation tracking), chapter finding banner actions, model config status warning
 - `project-dashboard.tsx`: home page project grid with empty state, model services entry
 - `model-service-dialog.tsx`: model provider configuration (add/edit/activate/test)
 - `create-project-dialog.tsx`: modal for creating new projects

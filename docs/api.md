@@ -640,7 +640,7 @@ Accepts a pending revision proposal. Delegates to the service layer which:
 - Updates chapter content (converted back to TipTap JSON) and word count
 - Creates a chapter snapshot
 - Marks proposal as `accepted`
-- Triggers background summary/consistency agents (non-blocking)
+- Triggers background summary/consistency agents (non-blocking) with the accepted chapter's `updatedAt` so stale agent runs cannot overwrite newer findings
 
 Returns `{ proposalId: string, status: string }`.
 
@@ -665,6 +665,8 @@ Returns `{ proposalId: string, status: string }`.
 ## Agent Finding
 
 Background agent findings for chapter consistency and quality checks. All procedures require a valid session and scope access through project ownership.
+
+Background consistency runs replace only open findings for the same chapter. Findings marked `ignored` or `resolved` are preserved across later runs, including when the same issue returns with a different severity.
 
 ### `agentFinding.listByChapter`
 
