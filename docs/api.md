@@ -5,7 +5,9 @@ Protocol: tRPC v11 over HTTP GET/POST
 Serialization: SuperJSON
 Auth: NextAuth.js v5 with Discord OAuth and optional local user mode
 
-All routers currently use `protectedProcedure`. Requests require a valid session, and ownership is enforced through `ctx.session.user.id`.
+All tRPC routers currently use `protectedProcedure`. Requests require a valid session, and ownership is enforced through `ctx.session.user.id`.
+
+The app also exposes a streaming Route Handler at `/api/chat/stream` for normal AI chat turns that do not require structured revision proposal generation.
 
 ## Shared Patterns
 
@@ -28,6 +30,43 @@ All routers currently use `protectedProcedure`. Requests require a valid session
 | `revisionProposal` | `listBySession`, `accept`, `reject` |
 | `agentFinding` | `listByChapter`, `ignore`, `resolve` |
 | `llmConfig` | `list`, `create`, `update`, `delete`, `setActive`, `status`, `fetchModels`, `testConnection` |
+
+## Route Handlers
+
+### `POST /api/chat/stream`
+
+Streams a normal AI chat response as `text/plain; charset=utf-8`.
+
+Input JSON:
+
+```typescript
+{
+  message: string;
+  sessionId: string;
+  projectId: string;
+}
+```
+
+Behavior:
+
+1. Requires a valid NextAuth session.
+2. Rejects edit-intent messages with `409 Non-streaming required`; clients should use `session.send` for messages that may create structured revision proposals.
+3. Loads the AI session scoped through project ownership.
+4. Verifies `session.projectId === projectId`.
+5. Assembles chapter context when the session is bound to a chapter, or uses a minimal writing-assistant system prompt when it is not.
+6. Streams text chunks from `llmClient.stream`.
+7. After the stream closes, persists the user and assistant messages, including tool call metadata when present.
+
+Responses:
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `200` | streamed plain text | Chat response streamed successfully |
+| `400` | plain text error | Invalid JSON, missing fields, or session/project mismatch |
+| `401` | `Unauthorized` | No valid session |
+| `404` | `Session not found` | Session does not exist or is outside the current user's scope |
+| `409` | `Non-streaming required` | Message has edit intent and must use `session.send` |
+| `500` | `AI generation failed` | Unexpected generation failure |
 
 ## Project
 
@@ -150,6 +189,8 @@ Input:
 
 Creates a chapter in a project owned by the current user. `content` is TipTap JSON. `wordCount` is computed from plain text converted from TipTap JSON.
 
+If `content` is omitted, the chapter content is stored as an empty string and `wordCount` is `0`.
+
 ### `chapter.save`
 
 Mutation.
@@ -166,6 +207,8 @@ Input:
 ```
 
 Updates chapter content and metadata, recalculates word count, creates a snapshot, and triggers background summary/consistency agents. Agent failures are logged and do not fail the save.
+
+`status`, when provided, must be one of `"draft"`, `"review"`, or `"complete"`.
 
 Returns the saved chapter with the latest snapshot.
 
@@ -421,6 +464,8 @@ Input:
 
 Creates a world note in a project owned by the current user. Plain text `content` is stored as TipTap JSON. Tags are trimmed, deduplicated, and stored as a JSON array string.
 
+Defaults: `content` is `""`, `category` is `"general"`, and `order` is `0`.
+
 ### `worldNote.update`
 
 Mutation.
@@ -465,6 +510,8 @@ Input:
 ```
 
 Searches chapters, characters, and world notes in a project owned by the current user. Chapter and world-note content is converted from TipTap JSON to plain text before matching and snippet extraction.
+
+`query` must be a non-empty string. Search is case-insensitive and uses substring matching.
 
 Output:
 
@@ -820,6 +867,8 @@ Returns the current LLM configuration status for the user:
 
 `source` is `"db"` when the user has an active DB config, `"env"` when falling back to `ANTHROPIC_API_KEY`, or `"none"` when no configuration is available.
 
+Environment fallback is considered usable when either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is set.
+
 ### `llmConfig.fetchModels`
 
 Mutation.
@@ -832,6 +881,8 @@ Input:
 
 Fetches available models from the provider API using the stored (decrypted) API key. Updates the config's `availableModels` and `modelsUpdatedAt` fields. Requires `LLM_ENCRYPTION_KEY`. Returns the serialized config with the updated model list. Throws `NOT_FOUND` if the config does not belong to the current user.
 
+Throws `PRECONDITION_FAILED` if `LLM_ENCRYPTION_KEY` is not set.
+
 ### `llmConfig.testConnection`
 
 Mutation.
@@ -842,7 +893,9 @@ Input:
 { id: string; model?: string }
 ```
 
-Tests connectivity to the provider by sending a minimal prompt. Uses the stored (decrypted) API key and the specified model, falling back to the config's model, then to `claude-sonnet-4-20250514`. Requires `LLM_ENCRYPTION_KEY`. Returns `{ success: true }` on success. Throws `BAD_REQUEST` with the provider error message on failure.
+Tests connectivity to the provider by sending a minimal prompt. Uses the stored (decrypted) API key and the specified model, falling back to the config's model, then to a provider default. The Anthropic default is `claude-sonnet-4-20250514`; the OpenAI-compatible default is `gpt-4o`. Requires `LLM_ENCRYPTION_KEY`. Returns `{ success: true }` on success. Throws `BAD_REQUEST` with the provider error message on failure.
+
+Throws `PRECONDITION_FAILED` if `LLM_ENCRYPTION_KEY` is not set.
 
 ## AI Tool Data Access
 
@@ -864,4 +917,6 @@ tRPC errors are returned in the standard tRPC response envelope. Common codes:
 | `UNAUTHORIZED` | No valid session |
 | `BAD_REQUEST` | Input validation failed |
 | `NOT_FOUND` | Resource does not exist or is outside the current user's scope |
+| `CONFLICT` | Revision proposal cannot be applied because chapter content changed or the replace target is no longer unique |
+| `PRECONDITION_FAILED` | Required runtime configuration is missing, such as `LLM_ENCRYPTION_KEY` for encrypted model service keys |
 | `INTERNAL_SERVER_ERROR` | Server-side failure, including AI generation failure |

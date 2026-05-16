@@ -9,7 +9,7 @@ OpenStory is a Next.js writing workspace for long-form fiction. It combines proj
 - SQLite + Prisma ORM via `@prisma/client`
 - NextAuth.js v5 beta with Discord OAuth and optional local user mode
 - Tailwind CSS v4, lucide-react icons, and Biome
-- Vercel AI SDK v6 with Anthropic provider support
+- Vercel AI SDK v6 with Anthropic and OpenAI-compatible provider support
 
 ## Setup
 
@@ -32,6 +32,9 @@ AI chat requires either a user LLM config in the database or an environment fall
 
 ```env
 ANTHROPIC_API_KEY="optional local fallback for Anthropic"
+OPENAI_API_KEY="optional local fallback for OpenAI-compatible providers"
+OPENAI_BASE_URL="https://api.openai.com/v1"
+OPENAI_MODEL="gpt-4o"
 ```
 
 ### Local User Mode
@@ -90,6 +93,17 @@ npm test -- src/server/services/encryption.test.ts # Single test file
 
 `npm run typecheck` and `npm test` pass with the current source. For production builds without Discord OAuth, set `ENABLE_LOCAL_USER_MODE="true"` so Discord credentials are optional.
 
+## Documentation
+
+Start with the [documentation index](docs/index.md) for the project map.
+
+| Document | Use it for |
+|----------|------------|
+| [API Reference](docs/api.md) | tRPC routers, procedure inputs/outputs, streaming chat, and common error behavior |
+| [Current AI System Design](docs/superpowers/specs/2026-05-08-openstory-ai-novel-tool-design.md) | System architecture and AI workspace design |
+| [AI Inline Revision Proposals Design](docs/superpowers/specs/2026-05-12-ai-inline-revision-proposals-design.md) | Revision proposal generation, validation, and review flow |
+| [Coding Guidelines](Coding%20Guidelines.md) | Repository-level engineering practices |
+
 ## Story Bible
 
 Inside a project workspace, the left sidebar switches between chapter editing, characters, outline, and world notes. Character fields can be cleared explicitly, outline parent/chapter references are project-scoped, and world-note text is stored as TipTap JSON. AI chat context includes the current chapter as plain text plus outline, character, and world-note summaries.
@@ -108,6 +122,7 @@ src/server/ai/           # AI context manager, tools, and background agents
 src/server/llm/          # Provider-agnostic LLM client layer
 src/server/services/     # Shared text, TipTap, revision proposal, and agent finding services
 prisma/schema.prisma     # SQLite schema
+docs/index.md            # Documentation map
 docs/api.md              # tRPC API reference
 ```
 
