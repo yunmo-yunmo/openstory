@@ -11,7 +11,7 @@ import {
 	buildUserSessionMessage,
 	createSessionLLMClient,
 	createSessionTools,
-	parseStoredSessionMessages,
+	readSessionMessages,
 	type StoredSessionMessage,
 } from "./session-turn";
 
@@ -93,7 +93,11 @@ export async function startStreamingSessionChat(opts: {
 	}
 
 	const userMessage = buildUserSessionMessage({ message: opts.message });
-	const storedMessages = parseStoredSessionMessages(aiSession.messages);
+	const storedMessages = await readSessionMessages({
+		db: opts.db,
+		sessionId: aiSession.id,
+		legacyMessages: aiSession.messages,
+	});
 	const contextMessages = await buildSessionContextMessages({
 		db: opts.db,
 		projectId: aiSession.projectId,

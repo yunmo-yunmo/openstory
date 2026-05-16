@@ -8,7 +8,7 @@ import {
 	buildUserSessionMessage,
 	createSessionLLMClient,
 	createSessionTools,
-	parseStoredSessionMessages,
+	readSessionMessages,
 	type StoredSessionMessage,
 } from "~/server/ai/session-turn";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -76,18 +76,15 @@ export const sessionRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND" });
 			}
 
+			const messages = await readSessionMessages({
+				db: ctx.db,
+				sessionId: session.id,
+				legacyMessages: session.messages,
+			});
+
 			return {
 				...session,
-				messages: (() => {
-					try {
-						return JSON.parse(session.messages) as {
-							role: string;
-							content: string;
-						}[];
-					} catch {
-						return [];
-					}
-				})(),
+				messages,
 			};
 		}),
 
@@ -121,7 +118,11 @@ export const sessionRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND" });
 			}
 
-			const messages = parseStoredSessionMessages(session.messages);
+			const messages = await readSessionMessages({
+				db: ctx.db,
+				sessionId: session.id,
+				legacyMessages: session.messages,
+			});
 			const userMessage = buildUserSessionMessage({
 				message: input.message,
 				selectionContext: input.selectionContext,

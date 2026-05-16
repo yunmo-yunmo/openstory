@@ -18,6 +18,7 @@ This index is the entry point for OpenStory documentation. Use it to find setup 
 | [OpenStory AI Novel Tool Design](superpowers/specs/2026-05-08-openstory-ai-novel-tool-design.md) | Current | System-level architecture for the writing workspace and AI assistant. |
 | [Open Source Runnable Demo Design](superpowers/specs/2026-05-09-open-source-runnable-demo-design.md) | Historical | Demo-focused design notes from the runnable local app milestone. |
 | [AI Inline Revision Proposals Design](superpowers/specs/2026-05-12-ai-inline-revision-proposals-design.md) | Current | Design for AI-generated chapter revision proposals and inline diff review. |
+| [AI Session Message Storage](superpowers/specs/2026-05-16-ai-session-message-storage.md) | Current | Append-only AI chat history storage, legacy JSON compatibility, and maintenance guidance. |
 
 ## API And Runtime Reference
 

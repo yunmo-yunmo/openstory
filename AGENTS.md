@@ -117,7 +117,7 @@ Session router `create` also uses Pattern B. Never use `findFirstOrThrow`; it th
 4. Otherwise falls through to normal chat: calls `assembleContext` for L0+L1 context (or minimal system prompt if no chapterId)
 5. Creates `createLLMClient` + `createToolRegistry`
 6. Otherwise falls through to normal chat: `llmClient.generate` (non-streaming tRPC path) or streaming Route Handler at `src/app/api/chat/stream/route.ts`
-7. Saves full message history (including toolCalls/toolResults) to `AISession.messages` JSON
+7. Appends the user/assistant messages to `AISessionMessage`; `toolCalls`, `toolResults`, and `proposalId` live in message metadata. `AISession.messages` is legacy JSON read compatibility only.
 
 ### Auth
 

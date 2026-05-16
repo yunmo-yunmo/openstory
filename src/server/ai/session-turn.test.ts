@@ -6,6 +6,7 @@ import {
 	buildUserSessionMessage,
 	MINIMAL_SYSTEM_PROMPT,
 	parseStoredSessionMessages,
+	readSessionMessages,
 } from "./session-turn";
 
 test("parseStoredSessionMessages keeps only stored chat-like messages", () => {
@@ -61,10 +62,45 @@ test("buildSessionContextMessages uses minimal prompt for unbound sessions", asy
 	]);
 });
 
-test("appendSessionMessages atomically appends and seeds missing titles", async () => {
-	const storedMessages = [{ role: "assistant", content: "previous" }];
+test("readSessionMessages returns legacy JSON followed by normalized messages", async () => {
+	const messages = await readSessionMessages({
+		db: {
+			aISessionMessage: {
+				findMany: async (args: unknown) => {
+					assert.deepEqual(args, {
+						where: { sessionId: "session-1" },
+						orderBy: { id: "asc" },
+						select: {
+							role: true,
+							content: true,
+							metadata: true,
+						},
+					});
+					return [
+						{
+							role: "assistant",
+							content: "new",
+							metadata: { proposalId: "proposal-1" },
+						},
+					];
+				},
+			},
+		} as never,
+		sessionId: "session-1",
+		legacyMessages: JSON.stringify([{ role: "user", content: "old" }]),
+	});
+
+	assert.deepEqual(messages, [
+		{ role: "user", content: "old" },
+		{ role: "assistant", content: "new", proposalId: "proposal-1" },
+	]);
+});
+
+test("appendSessionMessages appends rows, touches the session, and seeds missing titles", async () => {
 	let updateArgs: unknown = null;
+	let createManyArgs: unknown = null;
 	let transactionUsed = false;
+	const beforeAppend = Date.now();
 	const db = {
 		$transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
 			transactionUsed = true;
@@ -81,12 +117,17 @@ test("appendSessionMessages atomically appends and seeds missing titles", async 
 				return {
 					id: "session-1",
 					title: null,
-					messages: JSON.stringify(storedMessages),
 				};
 			},
 			update: async (args: unknown) => {
 				updateArgs = args;
 				return { id: "session-1", title: "new title" };
+			},
+		},
+		aISessionMessage: {
+			createMany: async (args: unknown) => {
+				createManyArgs = args;
+				return { count: 2 };
 			},
 		},
 	};
@@ -104,15 +145,25 @@ test("appendSessionMessages atomically appends and seeds missing titles", async 
 
 	assert.deepEqual(updated, { id: "session-1", title: "new title" });
 	assert.equal(transactionUsed, true);
-	assert.deepEqual(updateArgs, {
-		where: { id: "session-1" },
-		data: {
-			messages: JSON.stringify([
-				...storedMessages,
-				{ role: "user", content: "hello" },
-				{ role: "assistant", content: "hi" },
-			]),
-			title: "new title",
-		},
+	assert.deepEqual(createManyArgs, {
+		data: [
+			{
+				sessionId: "session-1",
+				role: "user",
+				content: "hello",
+			},
+			{
+				sessionId: "session-1",
+				role: "assistant",
+				content: "hi",
+			},
+		],
 	});
+	const update = updateArgs as {
+		where: { id: string };
+		data: { title?: string; updatedAt: Date };
+	};
+	assert.deepEqual(update.where, { id: "session-1" });
+	assert.equal(update.data.title, "new title");
+	assert.ok(update.data.updatedAt.getTime() >= beforeAppend);
 });

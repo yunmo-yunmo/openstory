@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ModelMessage } from "ai";
 import {
-	startStreamingSessionChat,
 	StreamingSessionError,
+	startStreamingSessionChat,
 } from "./streaming-session";
 
 test("startStreamingSessionChat streams with server-side chapter context and tools", async () => {
@@ -23,7 +23,9 @@ test("startStreamingSessionChat streams with server-side chapter context and too
 	} | null = null;
 	const registryProjectIds: string[] = [];
 	let updateArgs: unknown = null;
+	let createManyArgs: unknown = null;
 	let transactionUsed = false;
+	const beforePersist = Date.now();
 
 	const db = {
 		$transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
@@ -49,6 +51,24 @@ test("startStreamingSessionChat streams with server-side chapter context and too
 			update: async (args: unknown) => {
 				updateArgs = args;
 				return {};
+			},
+		},
+		aISessionMessage: {
+			findMany: async (args: unknown) => {
+				assert.deepEqual(args, {
+					where: { sessionId: "session-1" },
+					orderBy: { id: "asc" },
+					select: {
+						role: true,
+						content: true,
+						metadata: true,
+					},
+				});
+				return [];
+			},
+			createMany: async (args: unknown) => {
+				createManyArgs = args;
+				return { count: 2 };
 			},
 		},
 	};
@@ -99,22 +119,28 @@ test("startStreamingSessionChat streams with server-side chapter context and too
 
 	await result.persist("assistant response");
 
-	assert.deepEqual(updateArgs, {
-		where: { id: "session-1" },
-		data: {
-			messages: JSON.stringify([
-				...storedMessages,
-				{ role: "user", content: "talk about the scene" },
-				{
-					role: "assistant",
-					content: "assistant response",
-					toolCalls,
-					toolResults,
-				},
-			]),
-			title: "talk about the scene",
-		},
+	assert.deepEqual(createManyArgs, {
+		data: [
+			{
+				sessionId: "session-1",
+				role: "user",
+				content: "talk about the scene",
+			},
+			{
+				sessionId: "session-1",
+				role: "assistant",
+				content: "assistant response",
+				metadata: { toolCalls, toolResults },
+			},
+		],
 	});
+	const update = updateArgs as {
+		where: { id: string };
+		data: { title?: string; updatedAt: Date };
+	};
+	assert.deepEqual(update.where, { id: "session-1" });
+	assert.equal(update.data.title, "talk about the scene");
+	assert.ok(update.data.updatedAt.getTime() >= beforePersist);
 	assert.equal(transactionUsed, true);
 });
 

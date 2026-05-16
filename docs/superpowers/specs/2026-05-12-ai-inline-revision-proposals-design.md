@@ -96,13 +96,13 @@ model ChapterRevisionProposal {
 
 The `Project`, `Chapter`, and `AISession` models need matching relation fields.
 
-Why this should be its own model instead of only JSON inside `AISession.messages`:
+Why this should be its own model instead of only chat-message metadata:
 
 - Pending proposals survive page refresh.
 - Accept/reject status is queryable.
 - Conflict checks can compare against `baseContentHash`.
 - Future "AI edit history" can build on the same record type.
-- Chat message JSON remains a message log, not the source of truth for manuscript mutations.
+- Chat message metadata remains a message log, not the source of truth for manuscript mutations.
 
 ## API Design
 
@@ -122,7 +122,7 @@ First version choice: keep proposals in the dedicated `revisionProposal` router 
 
 ### Session Message Link
 
-When `session.send` creates a proposal, the assistant message stored in `AISession.messages` should include:
+When `session.send` creates a proposal, the assistant message stored in `AISessionMessage` should include this metadata:
 
 ```ts
 {

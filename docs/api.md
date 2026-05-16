@@ -555,7 +555,14 @@ Input:
 }
 ```
 
-Creates an AI session for a project owned by the current user. Messages are initialized as an empty JSON array.
+Creates an AI session for a project owned by the current user. New chat turns are stored as append-only `AISessionMessage` rows.
+
+Storage notes:
+
+- `AISession.messages` is a legacy JSON field kept for old local data.
+- New messages are inserted into `AISessionMessage`.
+- `AISession.updatedAt` is touched after message append so session lists remain sorted by recent activity.
+- See [AI Session Message Storage](superpowers/specs/2026-05-16-ai-session-message-storage.md) for the storage model and migration notes.
 
 ### `session.list`
 
@@ -591,7 +598,7 @@ Input:
 { id: string }
 ```
 
-Returns the session if it belongs to the current user. `messages` is parsed from stored JSON into an array.
+Returns the session if it belongs to the current user. `messages` is returned as an ordered array assembled from legacy `AISession.messages` JSON plus append-only `AISessionMessage` rows.
 
 ### `session.send`
 
@@ -617,12 +624,12 @@ Sends a user message to the AI assistant. `selectionContext` is provided when th
 Internal flow:
 
 1. Load the session scoped to the current user.
-2. Parse and append the user message.
+2. Read stored session messages.
 3. If the message has edit intent (or `selectionContext` is provided) and the session has a `chapterId`, attempt structured revision proposal via `llmClient.generateObject` with `revisionProposalDraftSchema`. If successful, create a pending `ChapterRevisionProposal` and return the summary with `proposalId`.
 4. Otherwise, if the session has a `chapterId`, call `assembleContext({ db, projectId, currentChapterId })`.
 5. Create the LLM client and AI tool registry.
 6. Call `llmClient.generate({ task: "chat", tools, maxTokens: 4096, temperature: 0.7 })`.
-7. Store assistant text plus any tool calls/results in `AISession.messages`.
+7. Append the user and assistant messages as `AISessionMessage` rows; tool calls/results and revision proposal IDs are stored as message metadata.
 8. Use the first user message as the session title if no title exists.
 
 Output:

@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type { ModelMessage, ToolSet } from "ai";
 import {
 	AI_OPERATION_LABELS,
@@ -95,6 +95,66 @@ export function parseStoredSessionMessages(
 	}
 }
 
+function splitSessionMessageMetadata(message: StoredSessionMessage) {
+	const { role, content, ...metadata } = message;
+	const data: {
+		role: string;
+		content: string;
+		metadata?: Prisma.InputJsonObject;
+	} = {
+		role,
+		content,
+	};
+	if (Object.keys(metadata).length > 0) {
+		data.metadata = metadata as Prisma.InputJsonObject;
+	}
+	return data;
+}
+
+function mergeSessionMessageMetadata(message: {
+	role: string;
+	content: string;
+	metadata: Prisma.JsonValue | null;
+}): StoredSessionMessage {
+	return {
+		role: message.role,
+		content: message.content,
+		...(message.metadata &&
+		typeof message.metadata === "object" &&
+		!Array.isArray(message.metadata)
+			? (message.metadata as Record<string, unknown>)
+			: {}),
+	};
+}
+
+export async function readSessionMessages(opts: {
+	db: PrismaClient;
+	sessionId: string;
+	legacyMessages: string;
+}): Promise<StoredSessionMessage[]> {
+	const legacyMessages = parseStoredSessionMessages(opts.legacyMessages);
+	const sessionMessages = await opts.db.aISessionMessage.findMany({
+		where: { sessionId: opts.sessionId },
+		orderBy: { id: "asc" },
+		select: {
+			role: true,
+			content: true,
+			metadata: true,
+		},
+	});
+
+	return [
+		...legacyMessages,
+		...sessionMessages.map((message) =>
+			mergeSessionMessageMetadata({
+				role: message.role,
+				content: message.content,
+				metadata: message.metadata,
+			}),
+		),
+	];
+}
+
 export function buildUserSessionMessage(opts: {
 	message: string;
 	selectionContext?: SelectionContext;
@@ -182,11 +242,15 @@ export async function appendSessionMessages(opts: {
 		});
 		if (!current) return null;
 
-		const currentMessages = parseStoredSessionMessages(current.messages);
-		currentMessages.push(...opts.messages);
+		await tx.aISessionMessage.createMany({
+			data: opts.messages.map((message) => ({
+				sessionId: opts.sessionId,
+				...splitSessionMessageMetadata(message),
+			})),
+		});
 
-		const data: { messages: string; title?: string } = {
-			messages: JSON.stringify(currentMessages),
+		const data: { title?: string; updatedAt: Date } = {
+			updatedAt: new Date(),
 		};
 		if (!current.title) {
 			data.title = opts.titleSeed.slice(0, 100);

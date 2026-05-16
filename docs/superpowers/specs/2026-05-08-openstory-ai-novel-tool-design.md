@@ -61,7 +61,8 @@ API 层         — tRPC 路由（project/chapter/character/session/search）
 | **Character** | id, projectId, name, description, traits, relationships(JSON), notes | 角色档案 |
 | **WorldNote** | id, projectId, title, content(JSON), category, tags, order | 世界观/设定 |
 | **Outline** | id, projectId, chapterId?, title, description, order, parentId, status | 大纲（支持嵌套） |
-| **AISession** | id, projectId, chapterId?, title, messages(JSON), toolState(JSON) | AI 会话历史 |
+| **AISession** | id, projectId, chapterId?, title, messages(legacy JSON), toolState(JSON) | AI 会话元数据；旧消息 JSON 仅作兼容读取 |
+| **AISessionMessage** | id, sessionId, role, content, metadata(JSON), createdAt | 追加式 AI 会话消息历史 |
 | **ChapterSnapshot** | id, chapterId, content, wordCount, summary?, version | 章节版本快照 |
 | **LLMConfig** | id, userId, provider, apiKey(加密), model, isActive | 用户的 LLM Provider 配置 |
 

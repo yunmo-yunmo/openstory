@@ -102,6 +102,7 @@ Start with the [documentation index](docs/index.md) for the project map.
 | [API Reference](docs/api.md) | tRPC routers, procedure inputs/outputs, streaming chat, and common error behavior |
 | [Current AI System Design](docs/superpowers/specs/2026-05-08-openstory-ai-novel-tool-design.md) | System architecture and AI workspace design |
 | [AI Inline Revision Proposals Design](docs/superpowers/specs/2026-05-12-ai-inline-revision-proposals-design.md) | Revision proposal generation, validation, and review flow |
+| [AI Session Message Storage](docs/superpowers/specs/2026-05-16-ai-session-message-storage.md) | Append-only chat history storage and legacy message compatibility |
 | [Coding Guidelines](Coding%20Guidelines.md) | Repository-level engineering practices |
 
 ## Story Bible
@@ -135,3 +136,4 @@ docs/api.md              # tRPC API reference
 - Server-only modules use `import "server-only"`, except shared converter code and `story-bible-types.ts` used by client components.
 - AI tool data access must always scope entity IDs by `projectId`.
 - Existing AI tool updates should filter by `{ id, projectId }`; never reassign ownership by overwriting `projectId`.
+- AI chat history is stored as append-only `AISessionMessage` rows. Use `readSessionMessages` and `appendSessionMessages`; do not add new direct JSON writes to `AISession.messages`.

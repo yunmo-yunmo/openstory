@@ -4,11 +4,11 @@
 
 **Goal:** Deepen the AI session turn Module so non-streaming chat, streaming chat, and structured revision proposal generation share one server-side implementation.
 
-**Architecture:** Create `src/server/ai/session-turn.ts` as the primary Module for an `AISession` user turn. Keep two external Interfaces, `sendAISessionTurn` and `startStreamingAISessionTurn`, while sharing session loading, stored message parsing, context/tool setup, message persistence, revision proposal policy, and title updates behind the same seam. Keep `AISession.messages` as a JSON string; do not change Prisma schema.
+**Architecture:** Create `src/server/ai/session-turn.ts` as the primary Module for an `AISession` user turn. Keep non-streaming and streaming external interfaces while sharing stored message parsing, context/tool setup, message persistence, revision proposal policy, and title updates behind the same module boundary. The original plan kept `AISession.messages` as JSON; the follow-up migration now stores new turns in append-only `AISessionMessage` rows while preserving legacy JSON reads.
 
 **Tech Stack:** Next.js 15 App Router, tRPC v11, Prisma SQLite, Vercel AI SDK, Zod, Node test runner, TypeScript.
 
-**Known Follow-up:** `AISession.messages` remains a JSON string updated with a read-modify-write transaction. This keeps the refactor small, but it is not a durable concurrency model for simultaneous sends to the same session from multiple tabs/devices. If OpenStory needs true concurrent AI session sends, add a separate migration task to normalize chat history into an append-only `AISessionMessage` table, or introduce a server-side per-session queue before accepting parallel turns.
+**Follow-up Completed:** New chat turns are stored in `AISessionMessage` rows instead of rewriting the whole `AISession.messages` JSON string. `AISession.messages` remains only as a legacy compatibility source for sessions created before the migration. See [AI Session Message Storage](../specs/2026-05-16-ai-session-message-storage.md).
 
 ---
 
