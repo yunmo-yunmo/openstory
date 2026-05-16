@@ -3,18 +3,17 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import type { ModelMessage, ToolSet } from "ai";
 import { hasRevisionEditIntent } from "../../app/_components/story-bible-types";
-import { createLLMClient as defaultCreateLLMClient } from "../llm/client";
 import type { TaskType } from "../llm/types";
-import { assembleContext as defaultAssembleContext } from "./context-manager";
-import { createToolRegistry as defaultCreateToolRegistry } from "./tools/registry";
-
-const MINIMAL_SYSTEM_PROMPT =
-	"You are an AI writing assistant for a novel project. " +
-	"Your role is to help the author write, edit, and plan their novel. " +
-	"You can read chapters, search the text, check consistency, " +
-	"update outlines, generate summaries, and write text. " +
-	"Always be constructive and specific in your feedback. " +
-	"When suggesting text, match the author's style and tone.";
+import type { assembleContext as defaultAssembleContext } from "./context-manager";
+import {
+	appendSessionMessages,
+	buildSessionContextMessages,
+	buildUserSessionMessage,
+	createSessionLLMClient,
+	createSessionTools,
+	parseStoredSessionMessages,
+	type StoredSessionMessage,
+} from "./session-turn";
 
 export class StreamingSessionError extends Error {
 	constructor(
@@ -25,8 +24,6 @@ export class StreamingSessionError extends Error {
 		this.name = "StreamingSessionError";
 	}
 }
-
-type LLMClient = ReturnType<typeof defaultCreateLLMClient>;
 
 interface StreamingLLMClient {
 	stream(params: {
@@ -52,30 +49,6 @@ interface StreamingSessionDependencies {
 		projectId: string;
 		llmClient: StreamingLLMClient;
 	}) => ToolSet;
-}
-
-interface StoredSessionMessage {
-	role: string;
-	content: string;
-	[key: string]: unknown;
-}
-
-function parseStoredMessages(raw: string): StoredSessionMessage[] {
-	try {
-		const parsed = JSON.parse(raw) as unknown;
-		if (!Array.isArray(parsed)) return [];
-		return parsed.filter(
-			(message): message is StoredSessionMessage =>
-				typeof message === "object" &&
-				message !== null &&
-				"role" in message &&
-				"content" in message &&
-				typeof message.role === "string" &&
-				typeof message.content === "string",
-		);
-	} catch {
-		return [];
-	}
 }
 
 async function resolveToolMetadata(
@@ -104,22 +77,6 @@ export async function startStreamingSessionChat(opts: {
 		throw new StreamingSessionError("Non-streaming required", 409);
 	}
 
-	const assembleContext =
-		opts.dependencies?.assembleContext ?? defaultAssembleContext;
-	const createLLMClient =
-		opts.dependencies?.createLLMClient ?? defaultCreateLLMClient;
-	const createToolRegistry =
-		opts.dependencies?.createToolRegistry ??
-		((args: {
-			db: PrismaClient;
-			projectId: string;
-			llmClient: StreamingLLMClient;
-		}) =>
-			defaultCreateToolRegistry({
-				...args,
-				llmClient: args.llmClient as LLMClient,
-			}));
-
 	const aiSession = await opts.db.aISession.findFirst({
 		where: {
 			id: opts.sessionId,
@@ -135,24 +92,36 @@ export async function startStreamingSessionChat(opts: {
 		throw new StreamingSessionError("Session project mismatch", 400);
 	}
 
-	const userMessage = {
-		role: "user" as const,
-		content: opts.message,
-	};
-	const storedMessages = parseStoredMessages(aiSession.messages);
-	const contextMessages = aiSession.chapterId
-		? await assembleContext({
-				db: opts.db,
-				projectId: aiSession.projectId,
-				currentChapterId: aiSession.chapterId,
-			})
-		: [{ role: "system" as const, content: MINIMAL_SYSTEM_PROMPT }];
+	const userMessage = buildUserSessionMessage({ message: opts.message });
+	const storedMessages = parseStoredSessionMessages(aiSession.messages);
+	const contextMessages = await buildSessionContextMessages({
+		db: opts.db,
+		projectId: aiSession.projectId,
+		chapterId: aiSession.chapterId,
+		dependencies: opts.dependencies,
+	});
 
-	const llmClient = createLLMClient({ db: opts.db, userId: opts.userId });
-	const tools = createToolRegistry({
+	const llmClient = createSessionLLMClient({
+		db: opts.db,
+		userId: opts.userId,
+		dependencies: opts.dependencies,
+	});
+	if (!llmClient.stream) {
+		throw new StreamingSessionError("Streaming unavailable", 500);
+	}
+	const tools = createSessionTools({
 		db: opts.db,
 		projectId: aiSession.projectId,
 		llmClient,
+		dependencies: opts.dependencies?.createToolRegistry
+			? {
+					createToolRegistry: (args) =>
+						opts.dependencies?.createToolRegistry?.({
+							...args,
+							llmClient: args.llmClient as StreamingLLMClient,
+						}) ?? {},
+				}
+			: undefined,
 	});
 
 	const result = await llmClient.stream({
@@ -184,30 +153,12 @@ export async function startStreamingSessionChat(opts: {
 					: {}),
 			};
 
-			await opts.db.$transaction(async (tx) => {
-				const current = await tx.aISession.findFirst({
-					where: {
-						id: opts.sessionId,
-						project: { userId: opts.userId },
-					},
-				});
-				if (!current) return;
-
-				const currentMessages = parseStoredMessages(current.messages);
-				currentMessages.push(userMessage);
-				currentMessages.push(assistantMessage);
-
-				const data: { messages: string; title?: string } = {
-					messages: JSON.stringify(currentMessages),
-				};
-				if (!current.title) {
-					data.title = userMessage.content.slice(0, 100);
-				}
-
-				await tx.aISession.update({
-					where: { id: opts.sessionId },
-					data,
-				});
+			await appendSessionMessages({
+				db: opts.db,
+				userId: opts.userId,
+				sessionId: opts.sessionId,
+				titleSeed: userMessage.content,
+				messages: [userMessage, assistantMessage],
 			});
 		},
 	};

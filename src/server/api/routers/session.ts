@@ -1,14 +1,17 @@
 import { TRPCError } from "@trpc/server";
 import type { ModelMessage } from "ai";
 import { z } from "zod";
+import { hasRevisionEditIntent } from "~/app/_components/story-bible-types";
 import {
-	AI_OPERATION_LABELS,
-	hasRevisionEditIntent,
-} from "~/app/_components/story-bible-types";
-import { assembleContext } from "~/server/ai/context-manager";
-import { createToolRegistry } from "~/server/ai/tools/registry";
+	appendSessionMessages,
+	buildSessionContextMessages,
+	buildUserSessionMessage,
+	createSessionLLMClient,
+	createSessionTools,
+	parseStoredSessionMessages,
+	type StoredSessionMessage,
+} from "~/server/ai/session-turn";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { createLLMClient } from "~/server/llm/client";
 import {
 	hashChapterContent,
 	revisionProposalDraftSchema,
@@ -118,19 +121,11 @@ export const sessionRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND" });
 			}
 
-			// Parse existing messages (user message constructed separately per path)
-			let messages: { role: string; content: string }[];
-			try {
-				messages = JSON.parse(session.messages);
-			} catch {
-				messages = [];
-			}
-			let userContent = input.message;
-			if (input.selectionContext) {
-				const sel = input.selectionContext;
-				userContent = `${AI_OPERATION_LABELS[sel.operation]}${sel.operation === "continue" ? "" : "选中的文字"}：${sel.selectedText}`;
-			}
-			const userMessage = { role: "user" as const, content: userContent };
+			const messages = parseStoredSessionMessages(session.messages);
+			const userMessage = buildUserSessionMessage({
+				message: input.message,
+				selectionContext: input.selectionContext,
+			});
 
 			// --- Revision proposal path ---
 			// Attempt structured proposal generation when the user message contains
@@ -188,10 +183,13 @@ Rules:
 					];
 
 					try {
-						const llmClient = createLLMClient({
+						const llmClient = createSessionLLMClient({
 							db: ctx.db,
 							userId: ctx.session.user.id,
 						});
+						if (!llmClient.generateObject) {
+							throw new Error("Structured generation unavailable");
+						}
 
 						const { object: draft } = await llmClient.generateObject({
 							task: "revision",
@@ -247,58 +245,17 @@ Rules:
 									proposalId: proposal.id,
 								};
 
-								// Atomically merge messages
-								const updated = await ctx.db.$transaction(async (tx) => {
-									const current = await tx.aISession.findFirst({
-										where: {
-											id: input.id,
-											project: {
-												userId: ctx.session.user.id,
-											},
-										},
-									});
-									if (!current)
-										throw new TRPCError({
-											code: "NOT_FOUND",
-										});
-
-									let currentMessages: {
-										role: string;
-										content: string;
-									}[];
-									try {
-										currentMessages = JSON.parse(current.messages);
-									} catch {
-										currentMessages = [];
-									}
-									currentMessages.push(
-										userMessage as {
-											role: string;
-											content: string;
-										},
-									);
-									currentMessages.push(
-										assistantMessage as {
-											role: string;
-											content: string;
-										},
-									);
-
-									const data: {
-										messages: string;
-										title?: string;
-									} = {
-										messages: JSON.stringify(currentMessages),
-									};
-									if (!current.title) {
-										data.title = input.message.slice(0, 100);
-									}
-
-									return tx.aISession.update({
-										where: { id: input.id },
-										data,
-									});
+								const updated = await appendSessionMessages({
+									db: ctx.db,
+									userId: ctx.session.user.id,
+									sessionId: input.id,
+									titleSeed: input.message,
+									messages: [
+										userMessage,
+										assistantMessage as StoredSessionMessage,
+									],
 								});
+								if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
 
 								return {
 									message: {
@@ -324,35 +281,21 @@ Rules:
 			// --- End revision proposal path ---
 
 			try {
-				// Build context — either full project context (L0+L1) or a minimal system prompt
-				let contextMessages: ModelMessage[];
-				if (session.chapterId) {
-					contextMessages = await assembleContext({
-						db: ctx.db,
-						projectId: session.projectId,
-						currentChapterId: session.chapterId,
-					});
-				} else {
-					contextMessages = [
-						{
-							role: "system",
-							content:
-								"You are an AI writing assistant for a novel project. " +
-								"Your role is to help the author write, edit, and plan their novel. " +
-								"You can read chapters, search the text, check consistency, " +
-								"update outlines, generate summaries, and write text. " +
-								"Always be constructive and specific in your feedback. " +
-								"When suggesting text, match the author's style and tone.",
-						},
-					];
-				}
+				const contextMessages = await buildSessionContextMessages({
+					db: ctx.db,
+					projectId: session.projectId,
+					chapterId: session.chapterId,
+				});
 
-				const llmClient = createLLMClient({
+				const llmClient = createSessionLLMClient({
 					db: ctx.db,
 					userId: ctx.session.user.id,
 				});
+				if (!llmClient.generate) {
+					throw new Error("Generation unavailable");
+				}
 
-				const tools = createToolRegistry({
+				const tools = createSessionTools({
 					db: ctx.db,
 					projectId: session.projectId,
 					llmClient,
@@ -385,40 +328,14 @@ Rules:
 				}
 
 				// Atomically merge messages to prevent concurrent send race conditions
-				const updated = await ctx.db.$transaction(async (tx) => {
-					const current = await tx.aISession.findFirst({
-						where: {
-							id: input.id,
-							project: { userId: ctx.session.user.id },
-						},
-					});
-					if (!current) throw new TRPCError({ code: "NOT_FOUND" });
-
-					let currentMessages: { role: string; content: string }[];
-					try {
-						currentMessages = JSON.parse(current.messages);
-					} catch {
-						currentMessages = [];
-					}
-					currentMessages.push(
-						userMessage as { role: string; content: string },
-					);
-					currentMessages.push(
-						assistantMessage as { role: string; content: string },
-					);
-
-					const data: { messages: string; title?: string } = {
-						messages: JSON.stringify(currentMessages),
-					};
-					if (!current.title) {
-						data.title = input.message.slice(0, 100);
-					}
-
-					return tx.aISession.update({
-						where: { id: input.id },
-						data,
-					});
+				const updated = await appendSessionMessages({
+					db: ctx.db,
+					userId: ctx.session.user.id,
+					sessionId: input.id,
+					titleSeed: input.message,
+					messages: [userMessage, assistantMessage as StoredSessionMessage],
 				});
+				if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
 
 				return {
 					message: {
